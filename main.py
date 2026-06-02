@@ -6,7 +6,7 @@ import math
 # Configuración de página limpia y ancha
 st.set_page_config(page_title="Cuadro de Mandos Financiero Pro", layout="wide")
 
-# Inyección de CSS para centrar las pestañas (Tu marca roja)
+# CSS para centrar las pestañas en la pantalla (Marca roja)
 st.markdown("""
     <style>
     .stTabs [data-baseweb="tab-list"] {
@@ -16,65 +16,77 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 st.title("📊 TU DASHBOARD FINANCIERO INTEGRAL")
-st.write("Gestiona tu patrimonio, optimiza tu hipoteca y proyecta tus inversiones en un entorno limpio y centralizado.")
+st.write("Modifica tus datos en la barra lateral izquierda y observa los resúmenes y gráficas centralizados al instante.")
 
 # ==========================================
-# 🛠️ BARRA LATERAL CON DESPLEGABLES REESTRUCTURADOS
+# ⚙️ BARRA LATERAL IZQUIERDA (TODO LO EDITABLE AQUÍ)
 # ==========================================
 st.sidebar.title("⚙️ Panel de Control")
 
-# Desplegable 1: Configuración de la IA
+# 1. Configuración de la IA
 with st.sidebar.expander("🔑 Configuración de IA", expanded=True):
     api_key_input = st.text_input("Introduce tu Gemini API Key:", type="password")
     if not api_key_input:
-        st.caption("🔒 IA en espera. Las calculadoras y gráficas funcionan al 100% sin clave.")
+        st.caption("🔒 IA en espera. El dashboard funciona al 100% sin clave.")
 
-# Desplegable 2: Tus Datos Económicos (Tu marca rosa)
+# 2. Tus Datos Económicos (Marca rosa con dinero extra)
 with st.sidebar.expander("📥 Tus datos económicos", expanded=False):
     ingresos_mensuales = st.number_input("Ingresos mensuales netos (€)", value=2000, step=100)
-    dinero_extra_anual = st.number_input("Ingresos extras anuales (Pagas extra, bonus...) (€)", value=0, step=500)
+    dinero_extra_anual = st.number_input("Ingresos extras anuales (Pagas, bonus...) (€)", value=0, step=500)
     ahorro_mensual_total = st.number_input("Ahorro neto total al mes (€)", value=500, step=50)
     capital_inicial = st.number_input("Dinero en cuenta/efectivo (€)", value=5000, step=500)
 
-# Desplegable 3: Tus Inversiones Actuales (NUEVA PETICIÓN)
-with st.sidebar.expander("📈 Tus Inversiones Actuales", expanded=False):
-    st.caption("Añade tus activos para calcular tu patrimonio neto total.")
+# 3. Tus Inversiones Actuales y Calculadora (Inputs de inversión en el lateral)
+with st.sidebar.expander("💼 Tus Inversiones y Calculadora", expanded=False):
+    st.markdown("**Patrimonio Actual:**")
     valor_inmuebles = st.number_input("Valor de propiedades/viviendas (€)", value=0, step=5000)
     valor_etfs = st.number_input("Valor en ETFs / Acciones (€)", value=0, step=1000)
     valor_otros = st.number_input("Otros activos (Fondos, Cripto...) (€)", value=0, step=500)
+    
+    st.markdown("---")
+    st.markdown("**🧮 Configurar Calculadora Financiera:**")
+    tipo_inversion = st.selectbox("Tipo de inversión a simular:", 
+                                  ["Interés Compuesto (ETFs)", "Rentabilidad Inmobiliaria", "ROI Simple"])
+    
+    # Inputs condicionales de las calculadoras dentro del lateral
+    if tipo_inversion == "Interés Compuesto (ETFs)":
+        cap_sim_inicial = st.number_input("Capital inicial simulación (€)", value=float(capital_inicial), step=1000.0)
+        aport_sim_mensual = st.number_input("Aportación mensual (€/mes)", value=float(ahorro_mensual_total), step=50.0)
+        anos_simulacion = st.slider("Años a proyectar", 1, 40, 15)
+    elif tipo_inversion == "Rentabilidad Inmobiliaria":
+        precio_compra = st.number_input("Precio compra vivienda (€)", value=100000, step=5000)
+        gastos_iniciales = st.number_input("Impuestos y reformas (€)", value=12000, step=1000)
+        alquiler_mensual = st.number_input("Alquiler mensual esperado (€)", value=600, step=50)
+        gastos_anuales_vivienda = st.number_input("Gastos anuales (IBI, comunidad...) (€)", value=1000, step=100)
+    elif tipo_inversion == "ROI Simple":
+        capital_invertido_roi = st.number_input("Dinero invertido (€)", value=10000, step=500)
+        valor_final_roi = st.number_input("Valor final obtenido (€)", value=13500, step=500)
 
-# Desplegable 4: Tu Hipoteca (Tu marca azul - Todo unificado)
+# 4. Tu Hipoteca (Marca azul - Todo unificado y editable)
 with st.sidebar.expander("🏠 Tu Hipoteca", expanded=False):
     tipo_hipoteca = st.selectbox("Tipo de Hipoteca", ["Fija", "Variable", "Mixta"])
     capital_original = st.number_input("Préstamo original (€)", value=150000, step=5000)
     capital_pendiente = st.number_input("Capital pendiente actual (€)", value=120000, step=5000)
     cuota_mensual_actual = st.number_input("Cuota mensual del recibo (€)", value=600, step=50)
     interes_anual_actual = st.number_input("Interés anual actual (%)", value=3.5, step=0.1)
-    
-    st.markdown("---")
-    st.markdown("**🛡️ Gastos Vinculados:**")
-    seguros_anuales_banco = st.number_input("Coste ANUAL de seguros del banco (€)", value=400, step=50)
-    
-    st.markdown("---")
-    st.markdown("**⚡ Aceleradores de Capital:**")
+    seguros_anuales_banco = st.number_input("Coste ANUAL de seguros bancarios (€)", value=400, step=50)
     amortizacion_extra = st.number_input("Aportación extra mensual (€/mes)", value=0, step=50)
     inyeccion_capital_unica = st.number_input("Inyección única / Puntual (€)", value=0, step=1000)
 
 
 # ==========================================
-# 🧮 MOTOR DE CÁLCULO INTERNO
+# 🧮 MOTOR INTERNO DE CÁLCULO
 # ==========================================
 # Prorrateo de ingresos extras
 ingreso_mensual_extra_prorrateado = dinero_extra_anual / 12
 ingresos_totales_calculados = ingresos_mensuales + ingreso_mensual_extra_prorrateado
-
 gastos_mensuales_calculados = ingresos_totales_calculados - ahorro_mensual_total
 gastos_anuales_estimados = gastos_mensuales_calculados * 12
 
-# Patrimonio Neto Total
+# Patrimonio Neto
 patrimonio_neto_total = capital_inicial + valor_inmuebles + valor_etfs + valor_otros
 
-# Matemáticas de la hipoteca
+# Matemáticas Hipoteca
 tasa_m = (interes_anual_actual / 100) / 12
 coste_mensual_seguros = seguros_anuales_banco / 12
 cuota_real_total = cuota_mensual_actual + coste_mensual_seguros
@@ -91,52 +103,76 @@ else:
     anos_normal = 0
     intereses_totales_normal = 0
 
+# Meta de libertad financiera (Regla del 4%)
+num_libertad = gastos_anuales_estimados * 25
+
+
 # ==========================================
-# 🗂️ PESTAÑAS CENTRALES (CENTRADAS POR CSS)
+# 🗂️ PESTAÑAS CENTRALES (100% VISTAS Y RESÚMENES)
 # ==========================================
-tab_resumen, tab_presupuesto, tab_calculadora, tab_hipoteca, tab_libertad, tab_ia = st.tabs([
+tab_resumen, tab_presupuesto, tab_inversion, tab_hipoteca, tab_libertad, tab_ia = st.tabs([
     "📊 Vista General", 
     "🥗 Presupuesto 50/30/20", 
-    "🧮 Calculadora de Inversión", 
+    "📈 Rendimiento de Inversiones", 
     "🏠 Escáner Hipoteca", 
     "🕊️ Libertad Financiera",
     "🤖 Consultor IA"
 ])
 
 # ------------------------------------------
-# PESTAÑA 1: VISTA GENERAL
+# PESTAÑA 1: VISTA GENERAL (RESUMEN INTEGRAL DE LAS 4 OPCIONES)
 # ------------------------------------------
 with tab_resumen:
     st.subheader("🏁 Resumen Ejecutivo de tu Salud Financiera")
+    st.write("Una instantánea de tus 4 pilares financieros calculados de forma cruzada:")
     
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Patrimonio Neto Total", f"{patrimonio_neto_total:,.2f} €", f"Efectivo: {capital_inicial} €")
-    col2.metric("Tasa de Ahorro Real", f"{((ahorro_mensual_total/ingresos_totales_calculados)*100):.1f}%", f"{ahorro_mensual_total} €/mes")
-    col3.metric("Cuota Real Hipoteca", f"{cuota_real_total:,.2f} €", f"+{coste_mensual_seguros:.1f} €/mes seguros", delta_color="inverse")
+    c_v1, c_v2 = st.columns(2)
     
-    num_libertad = gastos_anuales_estimados * 25
-    col4.metric("Meta Libertad Financiera", f"{num_libertad:,.0f} €")
-    
-    if dinero_extra_anual > 0:
-        st.caption(f"ℹ️ Tus ingresos mensuales se han incrementado en +{ingreso_mensual_extra_prorrateado:,.2f} €/mes debido a tus pagas/ingresos extras anuales.")
+    with c_v1:
+        # Pilar 1: Presupuesto
+        with st.container(border=True):
+            st.markdown("#### 1. Presupuesto Inteligente (50/30/20)")
+            tasa_ahorro = (ahorro_mensual_total / ingresos_totales_calculados) * 100
+            st.metric("Tu Tasa de Ahorro Real", f"{tasa_ahorro:.1f}%", f"{ahorro_mensual_total} €/mes guardados")
+            st.caption(f"Ingresos totales prorrateados: {ingresos_totales_calculados:,.2f} €/mes (incluye pagas extras).")
+            
+        # Pilar 2: Inversión y Patrimonio
+        with st.container(border=True):
+            st.markdown("#### 2. Proyección y Patrimonio Activo")
+            st.metric("Patrimonio Neto Total", f"{patrimonio_neto_total:,.2f} €", f"Líquido en cuenta: {capital_inicial} €")
+            st.caption(f"Simulador configurado actualmente en modo: **{tipo_inversion}** (Ver desglose en su pestaña).")
+
+    with c_v2:
+        # Pilar 3: Hipoteca
+        with st.container(border=True):
+            st.markdown("#### 3. Tu Hipoteca al mes")
+            st.metric("Cuota Real Mensual", f"{cuota_real_total:,.2f} €", f"Incluye {coste_mensual_seguros:.1f} € de seguros ocultos", delta_color="inverse")
+            st.metric("Tiempo restante por contrato", f"{anos_normal:.1f} años", f"{intereses_totales_normal:,.2f} € pendientes al banco", delta_color="inverse")
+
+        # Pilar 4: Libertad Financiera
+        with st.container(border=True):
+            st.markdown("#### 4. Tu Libertad Financiera")
+            st.metric("Meta Objetivo (Regla del 4%)", f"{num_libertad:,.0f} €")
+            porcentaje_meta = (patrimonio_neto_total / num_libertad) * 100 if num_libertad > 0 else 0
+            st.progress(min(porcentaje_meta / 100, 1.0))
+            st.caption(f"Has completado el **{porcentaje_meta:.1f}%** de tu número de la libertad financiera.")
 
 # ------------------------------------------
-# PESTAÑA 2: REGLA 50/30/20
+# PESTAÑA 2: BLOQUE PRESUPUESTO
 # ------------------------------------------
 with tab_presupuesto:
-    st.subheader("🥗 Distribución del Presupuesto Mensual")
+    st.subheader("🥗 Resumen del Presupuesto Mensual")
     nec = ingresos_totales_calculados * 0.5
     cap = ingresos_totales_calculados * 0.3
     aho = ingresos_totales_calculados * 0.2
     
     col_p1, col_p2 = st.columns(2)
     with col_p1:
-        st.markdown(f"**Distribución para tus ingresos totales ({ingresos_totales_calculados:,.2f} €/mes):**")
-        st.info(f"• **🏠 Necesidades (50%):** Máximo {nec:,.2f} €/mes\n\n"
-                f"• **🎉 Caprichos (30%):** Máximo {cap:,.2f} €/mes\n\n"
-                f"• **🐷 Ahorro Sugerido (20%):** Deberías guardar {aho:,.2f} €/mes")
-        st.success(f"👏 Tu ahorro real actual es de **{ahorro_mensual_total:,.2f} €/mes**.")
-
+        st.markdown(f"**Límites ideales recomendados para {ingresos_totales_calculados:,.2f} €/mes:**")
+        st.info(f"• **🏠 Necesidades básicas (50%):** Máximo {nec:,.2f} €/mes\n\n"
+                f"• **🎉 Caprichos y Ocio (30%):** Máximo {cap:,.2f} €/mes\n\n"
+                f"• **🐷 Ahorro recomendado (20%):** Deberías guardar {aho:,.2f} €/mes")
+        st.success(f"👏 Tu configuración real guarda **{ahorro_mensual_total:,.2f} €/mes**.")
     with col_p2:
         df_presupuesto = pd.DataFrame({
             "Importe (€)": [nec, cap, aho, ahorro_mensual_total]
@@ -144,119 +180,76 @@ with tab_presupuesto:
         st.bar_chart(df_presupuesto)
 
 # ------------------------------------------
-# PESTAÑA 3: CALCULADORA FINANCIERA MULTIÓPCIÓN (NUEVA PETICIÓN)
+# PESTAÑA 3: BLOQUE RENDIMIENTO DE INVERSIONES (RESUMEN INDIVIDUAL DE CALCULADORA)
 # ------------------------------------------
-with tab_calculadora:
-    st.subheader("🧮 Calculadora Financiera de Opciones de Inversión")
+with tab_inversion:
+    st.subheader(f"🧮 Resumen de Simulación: {tipo_inversion}")
     
-    tipo_inversion = st.selectbox("¿Qué tipo de inversión quieres calcular?", 
-                                  ["Interés Compuesto (ETFs / Acciones)", "Rentabilidad Inmobiliaria (Viviendas)", "ROI de Inversión Simple"])
-    
-    st.markdown("---")
-    
-    if tipo_inversion == "Interés Compuesto (ETFs / Acciones)":
-        st.markdown("#### 📈 Proyección de Interés Compuesto")
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            capital_inv_inicial = st.number_input("Capital inicial para esta simulación (€)", value=float(capital_inicial))
-        with c2:
-            aportacion_mensual = st.number_input("Aportación mensual (€/mes)", value=float(ahorro_mensual_total - amortizacion_extra))
-        with c3:
-            anos_simulacion = st.slider("Años de simulación", 1, 40, 15)
-            
-        interes_estimado = 0.07 # 7% promedio de mercado indexado
-        lista_anos = []
-        lista_capital = []
-        tot = capital_inv_inicial
-        
+    if tipo_inversion == "Interés Compuesto (ETFs)":
+        interes_estimado = 0.07
+        lista_anos, lista_capital = [], []
+        tot = cap_sim_inicial
         for ano in range(1, anos_simulacion + 1):
-            tot = (tot + (aportacion_mensual * 12)) * (1 + interes_estimado)
+            tot = (tot + (aport_sim_mensual * 12)) * (1 + interes_estimado)
             lista_anos.append(f"Año {ano}")
             lista_capital.append(tot)
             
         col_res1, col_res2 = st.columns([1, 2])
         with col_res1:
             st.metric("Capital Final Estimado", f"{tot:,.2f} €")
-            st.metric("Intereses Puros Generados", f"{tot - (capital_inv_inicial + (aportacion_mensual*12*anos_simulacion)):,.2f} €")
+            st.metric("Intereses Generados", f"{tot - (cap_sim_inicial + (aport_sim_mensual*12*anos_simulacion)):,.2f} €")
         with col_res2:
-            df_compuesto = pd.DataFrame({"Evolución del Capital (€)": lista_capital}, index=lista_anos)
+            df_compuesto = pd.DataFrame({"Evolución Patrimonio (€)": lista_capital}, index=lista_anos)
             st.line_chart(df_compuesto)
             
-    elif tipo_inversion == "Rentabilidad Inmobiliaria (Viviendas)":
-        st.markdown("#### 🏠 Simulador de Inversión en Ladrillo")
-        cc1, cc2, cc3 = st.columns(3)
-        with cc1:
-            precio_compra = st.number_input("Precio de compra de la vivienda (€)", value=100000, step=5000)
-            gastos_reforma_impuestos = st.number_input("Gastos iniciales (Notaría, reformas, ITP...) (€)", value=12000, step=1000)
-        with cc2:
-            alquiler_mensual = st.number_input("Alquiler mensual que vas a cobrar (€)", value=600, step=50)
-        with cc3:
-            gastos_anuales_vivienda = st.number_input("Gastos anuales (IBI, seguro, comunidad...) (€)", value=1000, step=100)
-            
-        inversion_total_real = precio_compra + gastos_reforma_impuestos
+    elif tipo_inversion == "Rentabilidad Inmobiliaria":
+        inversion_total_real = precio_compra + gastos_iniciales
         ingresos_anuales_brutos = alquiler_mensual * 12
         ingresos_anuales_netos = ingresos_anuales_brutos - gastos_anuales_vivienda
+        rent_bruta = (ingresos_anuales_brutos / inversion_total_real) * 100
+        rent_neta = (ingresos_anuales_netos / inversion_total_real) * 100
         
-        rentabilidad_bruta = (ingresos_anuales_brutos / inversion_total_real) * 100
-        rentabilidad_neta = (ingresos_anuales_netos / inversion_total_real) * 100
-        
-        st.markdown("##### 🏁 Resultados del Análisis Inmobiliario:")
         col_in1, col_in2, col_in3 = st.columns(3)
-        col_in1.metric("Inversión Total Real realizada", f"{inversion_total_real:,.2f} €")
-        col_in2.metric("Rentabilidad BRUTA Anual", f"{rentabilidad_bruta:.2f}%")
-        col_in3.metric("Rentabilidad NETA Anual", f"{rentabilidad_neta:.2f}%")
+        col_in1.metric("Inversión Total Real", f"{inversion_total_real:,.2f} €")
+        col_in2.metric("Rentabilidad Bruta", f"{rent_bruta:.2f}%")
+        col_in3.metric("Rentabilidad Neta Anual", f"{rent_neta:.2f}%")
         
         df_inmo = pd.DataFrame({
             "Importe Anual (€)": [ingresos_anuales_brutos, gastos_anuales_vivienda, ingresos_anuales_netos]
-        }, index=["Ingresos Brutos", "Gastos de Operación", "Beneficio Limpio (Neto)"])
+        }, index=["Ingresos Brutos", "Gastos de Operación", "Beneficio Neto"])
         st.bar_chart(df_inmo)
         
-    elif tipo_inversion == "ROI de Inversión Simple":
-        st.markdown("#### 🧮 Cálculo de Retorno de Inversión (ROI) Genérico")
-        cx1, cx2 = st.columns(2)
-        with cx1:
-            capital_invertido_roi = st.number_input("Cantidad de dinero invertida (€)", value=10000, step=500)
-        with cx2:
-            valor_final_roi = st.number_input("Valor final obtenido / actual (€)", value=13500, step=500)
-            
+    elif tipo_inversion == "ROI Simple":
         beneficio_neto_roi = valor_final_roi - capital_invertido_roi
         roi_porcentaje = (beneficio_neto_roi / capital_invertido_roi) * 100 if capital_invertido_roi > 0 else 0
-        
         col_r1, col_r2 = st.columns(2)
         col_r1.metric("Beneficio Neto Limpio", f"{beneficio_neto_roi:,.2f} €")
-        col_r2.metric("Retorno de la Inversión (ROI)", f"{roi_porcentaje:.2f}%")
+        col_r2.metric("Retorno Inversión (ROI)", f"{roi_porcentaje:.2f}%")
 
 # ------------------------------------------
-# PESTAÑA 4: ESCÁNER DE HIPOTECA
+# PESTAÑA 4: BLOQUE ESCÁNER HIPOTECA
 # ------------------------------------------
 with tab_hipoteca:
-    st.subheader("🏠 Radiografía y Optimización de la Hipoteca")
+    st.subheader("🏠 Análisis del Bloque de Hipoteca")
     
     if anos_normal == 0:
-        st.error("La cuota mensual debe ser superior a los intereses devengados.")
+        st.error("Revisa los datos de la hipoteca en la barra lateral.")
     else:
-        pagado_ya = capital_original - capital_pendiente
-        porcentaje_pagado = (pagado_ya / capital_original) * 100 if capital_original > 0 else 0
-        
         col_h1, col_h2 = st.columns(2)
         with col_h1:
-            st.markdown("#### 🔍 Desglose de tu recibo mensual real:")
+            st.markdown("#### Desglose del recibo mensual actual:")
             df_cuota = pd.DataFrame({
                 "Euros (€)": [capital_este_mes, interes_este_mes, coste_mensual_seguros]
             }, index=["Capital (Tu Casa)", "Intereses (Banco)", "Seguros (Coste Oculto)"])
             st.bar_chart(df_cuota)
-            
         with col_h2:
-            st.markdown("#### 📊 Estado Actual de la Deuda:")
-            st.info(f"• **Porcentaje pagado de la propiedad:** {porcentaje_pagado:.1f}%\n\n"
-                    f"• **Años restantes por contrato:** {anos_normal:.1f} años\n\n"
-                    f"• **Intereses pendientes de pago:** {intereses_totales_normal:,.2f} €")
+            st.markdown("#### Datos de Deuda:")
+            st.info(f"• **Años por contrato:** {anos_normal:.1f} años\n\n"
+                    f"• **Intereses totales pendientes:** {intereses_totales_normal:,.2f} €")
 
-        # Efecto de aceleradores
+        # Aceleradores
         capital_pendiente_neto = capital_pendiente - inyeccion_capital_unica
-        if inyeccion_capital_unica >= capital_pendiente:
-            st.success("🎉 ¡HACHAZO INMEDIATO! Deuda liquidada por completo.")
-        elif amortizacion_extra > 0 or inyeccion_capital_unica > 0:
+        if amortizacion_extra > 0 or inyeccion_capital_unica > 0:
             cuota_con_extra = cuota_mensual_actual + amortizacion_extra
             if cuota_con_extra > (capital_pendiente_neto * tasa_m):
                 meses_restantes_extra = -math.log(1 - (capital_pendiente_neto * tasa_m) / cuota_con_extra) / math.log(1 + tasa_m)
@@ -268,61 +261,50 @@ with tab_hipoteca:
                 dinero_ahorrado_interes = intereses_totales_normal - intereses_totales_extra
 
                 st.markdown("---")
-                st.markdown("### 🔥 Impacto de tus Aceleradores")
+                st.markdown("### 🔥 Impacto de la Amortización Extraordinaria")
                 col_m1, col_m2 = st.columns(2)
                 with col_m1:
-                    st.metric("Años que le quitas al banco", f"{anos_ahorrados:.1f} años antes", f"Baja a {anos_extra:.1f} años")
+                    st.metric("Años ahorrados al banco", f"{anos_ahorrados:.1f} años antes")
                     st.metric("Dinero salvado en intereses", f"{dinero_ahorrado_interes:,.2f} €")
                 with col_m2:
                     df_intereses = pd.DataFrame({
                         "Intereses (€)": [intereses_totales_normal, intereses_totales_extra]
-                    }, index=["Intereses Sin Extras", "Intereses Con Extras"])
+                    }, index=["Sin Estrategia", "Con Estrategia"])
                     st.bar_chart(df_intereses)
 
 # ------------------------------------------
-# PESTAÑA 5: LIBERTAD FINANCIERA
+# PESTAÑA 5: BLOQUE LIBERTAD FINANCIERA
 # ------------------------------------------
 with tab_libertad:
-    st.subheader("🕊 extinction Opciones de Libertad Financiera (Regla del 4%)")
+    st.subheader("🕊️ Tu Meta de Libertad Financiera (Regla del 4%)")
     st.error(f"## 🎯 TU NÚMERO OBJETIVO: {num_libertad:,.2f} €")
     st.write(f"Tus gastos anuales proyectados son de **{gastos_anuales_estimados:,.2f} €**. "
-             f"Alcanzando esta meta invertida, la rentabilidad anual cubrirá tu ritmo de vida de por vida.")
+             f"Si logras acumular tu número objetivo invertido, la rentabilidad media cubrirá tus gastos de por vida sin agotar el capital.")
 
 # ------------------------------------------
 # PESTAÑA 6: CONSULTORÍA DE IA
 # ------------------------------------------
 with tab_ia:
-    st.subheader("🤖 Consultor Estratégico de IA")
+    st.subheader("🤖 Informe Estratégico por Inteligencia Artificial")
     if not api_key_input:
-        st.warning("🔒 Introduce tu Gemini API Key en la barra lateral para que la IA estudie tu nuevo patrimonio neto total.")
+        st.warning("🔒 Introduce tu Gemini API Key en la barra lateral para activar los informes de la IA.")
     else:
-        if st.button("🚀 Generar Dictamen Financiero Avanzado"):
+        if st.button("🚀 Solicitar Dictamen Financiero"):
             try:
                 genai.configure(api_key=api_key_input)
                 model = genai.GenerativeModel('gemini-1.5-flash')
                 
                 prompt = f"""
-                Actúa como un asesor financiero de élite. Analiza este mapa patrimonial completo:
-                - Ingresos base: {ingresos_mensuales} € | Ingresos extras anuales: {dinero_extra_anual} € (Prorrateo mensual total: {ingresos_totales_calculados:.2f} €)
-                - Ahorro mensual: {ahorro_mensual_total} €
+                Actúa como un asesor financiero de élite. Analiza este mapa patrimonial:
+                - Ingresos totales (con extras prorrateados): {ingresos_totales_calculados:.2f} €/mes
+                - Ahorro mensual: {ahorro_mensual_total} €/mes
+                - Patrimonio Neto: {patrimonio_neto_total} € (Efectivo: {capital_inicial} €, Inmuebles: {valor_inmuebles} €, ETFs: {valor_etfs} €, Otros: {valor_otros} €)
+                - Hipoteca: Debe {capital_pendiente} € al {interes_anual_actual}%. Cuota recibo: {cuota_mensual_actual} €/mes. Seguros vinculados: {seguros_anuales_banco} €/año.
+                - Meta libertad financiera: {num_libertad} €
                 
-                PATRIMONIO NETO ACTUAL: {patrimonio_neto_total} € 
-                (Desglose: Efectivo {capital_inicial} €, Inmuebles {valor_inmuebles} €, ETFs/Acciones {valor_etfs} €, Otros {valor_otros} €)
-                
-                HIPOTECA Y DEUDA:
-                - Debe {capital_pendiente} € de un préstamo original de {capital_original} € ({tipo_hipoteca} al {interes_anual_actual}%).
-                - Cuota del recibo: {cuota_mensual_actual} €/mes.
-                - SEGUROS VINCULADOS AL BANCO: {seguros_anuales_banco} € al año (coste oculto prorrateado de {coste_mensual_seguros:.2f} €/mes, cuota real: {cuota_real_total:.2f} €/mes).
-                - Aceleradores configurados: Extra mensual de {amortizacion_extra} €/mes e Inyección puntual de {inyeccion_capital_unica} €.
-                - Meta de Libertad Financiera: {num_libertad} €
-                
-                Redacta un informe estratégico estructurado en:
-                1. **EVALUACIÓN DEL PATRIMONIO NETO Y PERFIL DE RIESGO:** Analiza su nivel de diversificación actual en base a sus activos.
-                2. **EL DILEMA DE LOS SEGUROS VINCULADOS:** Determina si el coste de {seguros_anuales_banco} €/año justifica la bonificación del interés o si debe buscar un seguro libre.
-                3. **DÓNDE COLOCAR EL DINERO EXTRA:** Analiza si es mejor usar el capital de aceleración en amortizar hipoteca o en alimentar su cartera de inversión para acelerar el interés compuesto.
+                Genera un análisis profesional rápido de 3 bloques sobre su diversificación, los seguros del banco y si conviene usar el dinero extra en inversión o en liquidar hipoteca.
                 """
-                
-                with st.spinner("La IA está analizando tu ecosistema financiero integral..."):
+                with st.spinner("La IA está cruzando los datos..."):
                     response = model.generate_content(prompt)
                     st.markdown(response.text)
             except Exception as e:

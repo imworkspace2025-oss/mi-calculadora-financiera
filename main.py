@@ -21,7 +21,6 @@ st.write("Gestiona tu patrimonio de forma centralizada. Datos globales a la izqu
 # ==========================================
 # ⚙️ 1. INICIALIZACIÓN DE ESTADOS (SESSION STATE)
 # ==========================================
-# Creamos una inversión por defecto si la lista está vacía para que la app no empiece en blanco
 if "inversiones" not in st.session_state:
     st.session_state.inversiones = [
         {
@@ -85,7 +84,7 @@ with tab_inversion:
     st.subheader("💼 Tus Activos Actuales e Inversiones")
     st.write("Añade, elimina y personaliza cada una de tus inversiones. Los filtros cambiarán según el tipo seleccionado.")
 
-    # Botón dinámico para añadir una nueva inversión a la lista
+    # Botón dinámico para añadir una nueva inversión
     if st.button("➕ Añadir Nueva Inversión"):
         st.session_state.inversiones.append({
             "nombre": f"Inversión Nueva {len(st.session_state.inversiones) + 1}",
@@ -101,19 +100,15 @@ with tab_inversion:
             "valor_final": 13500.0
         })
 
-    # Inicializamos variables para consolidar datos globales
     patrimonio_inversiones_total = 0.0
     anos_proyeccion_horizonte = 15
-    
-    # Preparamos un diccionario para construir la gran gráfica global unificada
     cronologia_anos = list(range(1, anos_proyeccion_horizonte + 1))
     datos_grafica_global = {"Año": cronologia_anos}
     dict_graficas_individuales = {}
 
-    # Iteramos sobre cada inversión guardada en el estado de la sesión
+    # Iteramos sobre cada inversión
     for idx, inv in enumerate(st.session_state.inversiones):
         with st.container(border=True):
-            # Fila de cabecera: Nombre, Tipo y Botón de borrar
             col_cab1, col_cab2, col_cab3 = st.columns([2, 2, 1])
             with col_cab1:
                 inv["nombre"] = st.text_input("Nombre identificativo:", value=inv["nombre"], key=f"inv_name_{idx}")
@@ -126,12 +121,11 @@ with tab_inversion:
                 )
             with col_cab3:
                 st.markdown("<br>", unsafe_allow_html=True)
+                # FIX: Eliminada la función errónea. Ahora elimina y reinicia el script limpiamente a la primera.
                 if st.button("❌ Eliminar", key=f"inv_del_{idx}"):
                     st.session_state.inversiones.pop(idx)
-                    st.invalidate_pages() # Limpieza interna de Streamlit
                     st.rerun()
 
-            # Inputs y proyecciones específicas según el tipo de inversión seleccionado
             proyeccion_activo_lista = []
             
             if inv["tipo"] == "Interés Compuesto (ETFs / Fondos)":
@@ -142,7 +136,6 @@ with tab_inversion:
                 
                 patrimonio_inversiones_total += inv["valor_actual"]
                 
-                # Proyección a 15 años (Solución al error del orden alfabético de los índices de la gráfica)
                 acumulado = inv["valor_actual"]
                 for ano in cronologia_anos:
                     acumulado = (acumulado + (inv["aportacion_mensual"] * 12)) * (1 + (inv["interes_anual"] / 100))
@@ -155,11 +148,9 @@ with tab_inversion:
                 with c_l3: inv["alquiler_mensual"] = st.number_input("Alquiler mensual percibido (€)", value=float(inv["alquiler_mensual"]), key=f"l3_{idx}", step=50.0)
                 with c_l4: inv["gastos_anuales"] = st.number_input("Gastos anuales totales (IBI, Seguro...) (€)", value=float(inv["gastos_anuales"]), key=f"l4_{idx}", step=100.0)
                 
-                # El patrimonio actual en ladrillo es el coste total del activo comprado
                 inv["valor_actual"] = inv["precio_compra"] + inv["gastos_iniciales"]
                 patrimonio_inversiones_total += inv["valor_actual"]
                 
-                # Proyección: Valor del inmueble + acumulación de flujos de caja netos por alquiler
                 flujo_anual_neto = (inv["alquiler_mensual"] * 12) - inv["gastos_anuales"]
                 acumulado = inv["valor_actual"]
                 for ano in cronologia_anos:
@@ -174,15 +165,12 @@ with tab_inversion:
                 inv["valor_actual"] = inv["valor_final"]
                 patrimonio_inversiones_total += inv["valor_actual"]
                 
-                # Al ser ROI estático, asumimos que mantiene su valor si no hay interés compuesto asignado
                 for ano in cronologia_anos:
                     proyeccion_activo_lista.append(inv["valor_actual"])
 
-            # Guardamos los vectores de datos para construir las gráficas posteriormente
             datos_grafica_global[inv["nombre"]] = proyeccion_activo_lista
             dict_graficas_individuales[inv["nombre"]] = proyeccion_activo_lista
 
-    # El patrimonio neto total será el dinero líquido de la cuenta más la suma de todas las inversiones añadidas
     patrimonio_neto_total = capital_inicial + patrimonio_inversiones_total
 
 
@@ -205,7 +193,6 @@ with tab_hipoteca:
     with col_h7: amortizacion_extra = st.number_input("Amortización mensual extra (€/mes)", value=0, step=50)
     with col_h8: inyeccion_capital_unica = st.number_input("Inyección de capital puntual (€)", value=0, step=1000)
 
-    # Cálculos matemáticos de la hipoteca
     tasa_m = (interes_anual_actual / 100) / 12
     coste_mensual_seguros = seguros_anuales_banco / 12
     cuota_real_total = cuota_mensual_actual + coste_mensual_seguros
@@ -227,7 +214,7 @@ with tab_hipoteca:
 # 📊 6. RENDERIZADO FINAL DE RESULTADOS Y GRÁFICAS
 # ==========================================
 
-# --- PESTAÑA 1: VISTA GENERAL (Resúmenes automáticos y dinámicos) ---
+# --- PESTAÑA 1: VISTA GENERAL ---
 with tab_resumen:
     st.subheader("🏁 Resumen Ejecutivo de tu Salud Financiera")
     st.write("Una instantánea global cruzando la información de todas tus pestañas:")
@@ -280,7 +267,7 @@ with tab_presupuesto:
         st.bar_chart(df_presupuesto)
 
 
-# --- PESTAÑA 3: RENDIMIENTO DE INVERSIONES (Tus Nuevas Gráficas Cruzadas) ---
+# --- PESTAÑA 3: RENDIMIENTO DE INVERSIONES ---
 with tab_inversion:
     st.markdown("---")
     st.markdown("### 📊 Gráficas de Rendimiento y Proyecciones")
@@ -290,14 +277,12 @@ with tab_inversion:
         
         with col_g_ind:
             st.markdown("#### 📈 Evolución Individual de cada Inversión")
-            # Convertimos el diccionario individual en Dataframe numérico indexado por Año
             df_ind = pd.DataFrame(dict_graficas_individuales, index=cronologia_anos)
             st.line_chart(df_ind)
             st.caption("Visualiza de forma independiente el crecimiento y la tendencia de cada uno de tus activos.")
             
         with col_g_glob:
             st.markdown("#### 🌍 Tu Cartera de Inversión Global (Acumulado)")
-            # Sumamos fila por fila todas las columnas de inversión para obtener la masa patrimonial unificada
             df_glob_prep = pd.DataFrame(datos_grafica_global).set_index("Año")
             df_total_acumulado = pd.DataFrame({"Patrimonio Invertido Total (€)": df_glob_prep.sum(axis=1)}, index=cronologia_anos)
             st.area_chart(df_total_acumulado)
@@ -371,7 +356,6 @@ with tab_ia:
                 genai.configure(api_key=api_key_input)
                 model = genai.GenerativeModel('gemini-1.5-flash')
                 
-                # Construimos un resumen en texto de las inversiones dinámicas para alimentar el prompt de la IA
                 resumen_inv_ia = ""
                 for item in st.session_state.inversiones:
                     resumen_inv_ia += f"- {item['nombre']} ({item['tipo']}): Valor actual de {item['valor_actual']} €.\n"

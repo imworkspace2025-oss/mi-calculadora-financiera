@@ -16,15 +16,36 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 st.title("📊 TU DASHBOARD FINANCIERO INTEGRAL")
-st.write("Gestiona tu patrimonio de forma centralizada. Datos globales a la izquierda; herramientas y gráficos en cada pestaña.")
+st.write("Gestiona tu patrimonio de forma centralizada. Datos globales a la izquierda; herramientas y gráficos dinámicos en cada pestaña.")
 
 # ==========================================
-# ⚙️ 1. BARRA LATERAL (SOLO PARA LO GLOBAL E IA)
+# ⚙️ 1. INICIALIZACIÓN DE ESTADOS (SESSION STATE)
+# ==========================================
+# Creamos una inversión por defecto si la lista está vacía para que la app no empiece en blanco
+if "inversiones" not in st.session_state:
+    st.session_state.inversiones = [
+        {
+            "nombre": "Mi Primer Fondo Indexado",
+            "tipo": "Interés Compuesto (ETFs / Fondos)",
+            "valor_actual": 5000.0,
+            "aportacion_mensual": 200.0,
+            "interes_anual": 7.0,
+            "precio_compra": 100000.0,
+            "gastos_iniciales": 12000.0,
+            "alquiler_mensual": 600.0,
+            "gastos_anuales": 1000.0,
+            "capital_invertido": 10000.0,
+            "valor_final": 13500.0
+        }
+    ]
+
+# ==========================================
+# ⚙️ 2. BARRA LATERAL (SOLO PARA LO GLOBAL E IA)
 # ==========================================
 st.sidebar.title("⚙️ Datos Globales")
 
 # Configuración de la IA
-with st.sidebar.expander("🔑 Configuración de IA", expanded=True):
+with st.sidebar.expander("🔑 Configuración de IA", expanded=False):
     api_key_input = st.text_input("Introduce tu Gemini API Key:", type="password")
     if not api_key_input:
         st.caption("🔒 IA en espera. El dashboard funciona al 100% sin clave.")
@@ -36,7 +57,6 @@ with st.sidebar.expander("📥 Tus datos económicos", expanded=True):
     ahorro_mensual_total = st.number_input("Ahorro neto total al mes (€)", value=500, step=50)
     capital_inicial = st.number_input("Dinero líquido en cuenta (€)", value=5000, step=500)
 
-
 # Prorrateo global de ingresos extras para los cálculos
 ingreso_mensual_extra_prorrateado = dinero_extra_anual / 12
 ingresos_totales_calculados = ingresos_mensuales + ingreso_mensual_extra_prorrateado
@@ -46,7 +66,7 @@ num_libertad = gastos_anuales_estimados * 25
 
 
 # ==========================================
-# 🗂️ 2. DECLARACIÓN DE PESTAÑAS (CENTRADAS)
+# 🗂️ 3. DECLARACIÓN DE PESTAÑAS (CENTRADAS)
 # ==========================================
 tab_resumen, tab_presupuesto, tab_inversion, tab_hipoteca, tab_libertad, tab_ia = st.tabs([
     "📊 Vista General", 
@@ -59,48 +79,116 @@ tab_resumen, tab_presupuesto, tab_inversion, tab_hipoteca, tab_libertad, tab_ia 
 
 
 # ==========================================
-# 📥 3. RECOGIDA DE INPUTS ESPECÍFICOS EN SUS PESTAÑAS
-# (Colocamos los inputs arriba para calcular antes de mostrar la Vista General)
+# 📥 4. MOTOR DE CONFIGURACIÓN DINÁMICA DE INVERSIONES
 # ==========================================
-
-# --- CONTROLES DE LA PESTAÑA INVERSIÓN ---
 with tab_inversion:
     st.subheader("💼 Tus Activos Actuales e Inversiones")
-    st.write("Introduce tu patrimonio actual y configura la calculadora financiera en la parte superior:")
+    st.write("Añade, elimina y personaliza cada una de tus inversiones. Los filtros cambiarán según el tipo seleccionado.")
+
+    # Botón dinámico para añadir una nueva inversión a la lista
+    if st.button("➕ Añadir Nueva Inversión"):
+        st.session_state.inversiones.append({
+            "nombre": f"Inversión Nueva {len(st.session_state.inversiones) + 1}",
+            "tipo": "Interés Compuesto (ETFs / Fondos)",
+            "valor_actual": 0.0,
+            "aportacion_mensual": 0.0,
+            "interes_anual": 7.0,
+            "precio_compra": 100000.0,
+            "gastos_iniciales": 12000.0,
+            "alquiler_mensual": 600.0,
+            "gastos_anuales": 1000.0,
+            "capital_invertido": 10000.0,
+            "valor_final": 13500.0
+        })
+
+    # Inicializamos variables para consolidar datos globales
+    patrimonio_inversiones_total = 0.0
+    anos_proyeccion_horizonte = 15
     
-    col_act1, col_act2, col_act3 = st.columns(3)
-    with col_act1:
-        valor_inmuebles = st.number_input("Valor total de tus propiedades/viviendas (€)", value=0, step=5000)
-    with col_act2:
-        valor_etfs = st.number_input("Valor actual de tus ETFs / Acciones (€)", value=0, step=1000)
-    with col_act3:
-        valor_otros = st.number_input("Otros activos (Planes, Cripto...) (€)", value=0, step=500)
-        
-    patrimonio_neto_total = capital_inicial + valor_inmuebles + valor_etfs + valor_otros
-    
-    st.markdown("#### 🧮 Calculadora Financiera Multiopción")
-    tipo_inversion = st.selectbox("¿Qué modalidad de inversión quieres simular?", 
-                                  ["Interés Compuesto (ETFs / Fondos)", "Rentabilidad Inmobiliaria (Ladrillo)", "ROI Simple"])
-    
-    # Inputs específicos según calculadora
-    if tipo_inversion == "Interés Compuesto (ETFs / Fondos)":
-        c1, c2, c3 = st.columns(3)
-        with c1: cap_sim_inicial = st.number_input("Capital inicial simulación (€)", value=float(capital_inicial), step=1000.0)
-        with c2: aport_sim_mensual = st.number_input("Aportación mensual (€/mes)", value=float(ahorro_mensual_total), step=50.0)
-        with c3: anos_simulacion = st.slider("Años a proyectar en el gráfico", 1, 40, 15)
-    elif tipo_inversion == "Rentabilidad Inmobiliaria (Ladrillo)":
-        cc1, cc2, cc3, cc4 = st.columns(4)
-        with cc1: precio_compra = st.number_input("Precio compra vivienda (€)", value=100000, step=5000)
-        with cc2: gastos_iniciales = st.number_input("Impuestos y reformas (€)", value=12000, step=1000)
-        with cc3: alquiler_mensual = st.number_input("Alquiler mensual bruto (€)", value=600, step=50)
-        with cc4: gastos_anuales_vivienda = st.number_input("Gastos anuales (IBI, Comunidad...) (€)", value=1000, step=100)
-    elif tipo_inversion == "ROI Simple":
-        cx1, cx2 = st.columns(2)
-        with cx1: capital_invertido_roi = st.number_input("Dinero total invertido (€)", value=10000, step=500)
-        with cx2: valor_final_roi = st.number_input("Valor actual / final alcanzado (€)", value=13500, step=500)
+    # Preparamos un diccionario para construir la gran gráfica global unificada
+    cronologia_anos = list(range(1, anos_proyeccion_horizonte + 1))
+    datos_grafica_global = {"Año": cronologia_anos}
+    dict_graficas_individuales = {}
+
+    # Iteramos sobre cada inversión guardada en el estado de la sesión
+    for idx, inv in enumerate(st.session_state.inversiones):
+        with st.container(border=True):
+            # Fila de cabecera: Nombre, Tipo y Botón de borrar
+            col_cab1, col_cab2, col_cab3 = st.columns([2, 2, 1])
+            with col_cab1:
+                inv["nombre"] = st.text_input("Nombre identificativo:", value=inv["nombre"], key=f"inv_name_{idx}")
+            with col_cab2:
+                inv["tipo"] = st.selectbox(
+                    "Tipo de activo / Filtro:", 
+                    ["Interés Compuesto (ETFs / Fondos)", "Rentabilidad Inmobiliaria (Ladrillo)", "ROI Simple"],
+                    index=["Interés Compuesto (ETFs / Fondos)", "Rentabilidad Inmobiliaria (Ladrillo)", "ROI Simple"].index(inv["tipo"]),
+                    key=f"inv_tipo_{idx}"
+                )
+            with col_cab3:
+                st.markdown("<br>", unsafe_allow_html=True)
+                if st.button("❌ Eliminar", key=f"inv_del_{idx}"):
+                    st.session_state.inversiones.pop(idx)
+                    st.invalidate_pages() # Limpieza interna de Streamlit
+                    st.rerun()
+
+            # Inputs y proyecciones específicas según el tipo de inversión seleccionado
+            proyeccion_activo_lista = []
+            
+            if inv["tipo"] == "Interés Compuesto (ETFs / Fondos)":
+                c_f1, c_f2, c_f3 = st.columns(3)
+                with c_f1: inv["valor_actual"] = st.number_input("Capital inicial invertido (€)", value=float(inv["valor_actual"]), key=f"f1_{idx}", step=500.0)
+                with c_f2: inv["aportacion_mensual"] = st.number_input("Aportación mensual (€/mes)", value=float(inv["aportacion_mensual"]), key=f"f2_{idx}", step=50.0)
+                with c_f3: inv["interes_anual"] = st.number_input("Rentabilidad anual esperada (%)", value=float(inv["interes_anual"]), key=f"f3_{idx}", step=0.5)
+                
+                patrimonio_inversiones_total += inv["valor_actual"]
+                
+                # Proyección a 15 años (Solución al error del orden alfabético de los índices de la gráfica)
+                acumulado = inv["valor_actual"]
+                for ano in cronologia_anos:
+                    acumulado = (acumulado + (inv["aportacion_mensual"] * 12)) * (1 + (inv["interes_anual"] / 100))
+                    proyeccion_activo_lista.append(acumulado)
+
+            elif inv["tipo"] == "Rentabilidad Inmobiliaria (Ladrillo)":
+                c_l1, c_l2, c_l3, c_l4 = st.columns(4)
+                with c_l1: inv["precio_compra"] = st.number_input("Precio de compra inmueble (€)", value=float(inv["precio_compra"]), key=f"l1_{idx}", step=5000.0)
+                with c_l2: inv["gastos_iniciales"] = st.number_input("Impuestos, gastos y reformas (€)", value=float(inv["gastos_iniciales"]), key=f"l2_{idx}", step=1000.0)
+                with c_l3: inv["alquiler_mensual"] = st.number_input("Alquiler mensual percibido (€)", value=float(inv["alquiler_mensual"]), key=f"l3_{idx}", step=50.0)
+                with c_l4: inv["gastos_anuales"] = st.number_input("Gastos anuales totales (IBI, Seguro...) (€)", value=float(inv["gastos_anuales"]), key=f"l4_{idx}", step=100.0)
+                
+                # El patrimonio actual en ladrillo es el coste total del activo comprado
+                inv["valor_actual"] = inv["precio_compra"] + inv["gastos_iniciales"]
+                patrimonio_inversiones_total += inv["valor_actual"]
+                
+                # Proyección: Valor del inmueble + acumulación de flujos de caja netos por alquiler
+                flujo_anual_neto = (inv["alquiler_mensual"] * 12) - inv["gastos_anuales"]
+                acumulado = inv["valor_actual"]
+                for ano in cronologia_anos:
+                    acumulado += flujo_anual_neto
+                    proyeccion_activo_lista.append(acumulado)
+
+            elif inv["tipo"] == "ROI Simple":
+                c_r1, c_r2 = st.columns(2)
+                with c_r1: inv["capital_invertido"] = st.number_input("Dinero invertido original (€)", value=float(inv["capital_invertido"]), key=f"r1_{idx}", step=500.0)
+                with c_r2: inv["valor_final"] = st.number_input("Valor de mercado actual (€)", value=float(inv["valor_final"]), key=f"r2_{idx}", step=500.0)
+                
+                inv["valor_actual"] = inv["valor_final"]
+                patrimonio_inversiones_total += inv["valor_actual"]
+                
+                # Al ser ROI estático, asumimos que mantiene su valor si no hay interés compuesto asignado
+                for ano in cronologia_anos:
+                    proyeccion_activo_lista.append(inv["valor_actual"])
+
+            # Guardamos los vectores de datos para construir las gráficas posteriormente
+            datos_grafica_global[inv["nombre"]] = proyeccion_activo_lista
+            dict_graficas_individuales[inv["nombre"]] = proyeccion_activo_lista
+
+    # El patrimonio neto total será el dinero líquido de la cuenta más la suma de todas las inversiones añadidas
+    patrimonio_neto_total = capital_inicial + patrimonio_inversiones_total
 
 
-# --- CONTROLES DE LA PESTAÑA HIPOTECA ---
+# ==========================================
+# 🏠 5. CONTROLES ESPECÍFICOS DE LA HIPOTECA
+# ==========================================
 with tab_hipoteca:
     st.subheader("🏠 Configuración y Escáner de tu Hipoteca")
     st.write("Introduce las condiciones de tu préstamo bancario para analizar los costes reales:")
@@ -117,7 +205,7 @@ with tab_hipoteca:
     with col_h7: amortizacion_extra = st.number_input("Amortización mensual extra (€/mes)", value=0, step=50)
     with col_h8: inyeccion_capital_unica = st.number_input("Inyección de capital puntual (€)", value=0, step=1000)
 
-    # Cálculos matemáticos internos de la hipoteca
+    # Cálculos matemáticos de la hipoteca
     tasa_m = (interes_anual_actual / 100) / 12
     coste_mensual_seguros = seguros_anuales_banco / 12
     cuota_real_total = cuota_mensual_actual + coste_mensual_seguros
@@ -136,10 +224,10 @@ with tab_hipoteca:
 
 
 # ==========================================
-# 📊 4. RENDERIZADO DE RESULTADOS (DE ABAJO HACIA ARRIBA)
+# 📊 6. RENDERIZADO FINAL DE RESULTADOS Y GRÁFICAS
 # ==========================================
 
-# --- PESTAÑA 1: VISTA GENERAL (Tus 4 bloques clave restaurados) ---
+# --- PESTAÑA 1: VISTA GENERAL (Resúmenes automáticos y dinámicos) ---
 with tab_resumen:
     st.subheader("🏁 Resumen Ejecutivo de tu Salud Financiera")
     st.write("Una instantánea global cruzando la información de todas tus pestañas:")
@@ -153,15 +241,15 @@ with tab_resumen:
             st.caption(f"Tus ingresos mensuales ponderados son de {ingresos_totales_calculados:,.2f} €.")
             
         with st.container(border=True):
-            st.markdown("#### 2. Tu Patrimonio e Inversión")
-            st.metric("Patrimonio Neto Calculado", f"{patrimonio_neto_total:,.2f} €", f"Líquido: {capital_inicial} €")
-            st.caption(f"Calculadora activa en modo: **{tipo_inversion}**.")
+            st.markdown("#### 2. Tu Patrimonio e Inversión Colectiva")
+            st.metric("Patrimonio Neto Calculado", f"{patrimonio_neto_total:,.2f} €", f"Total invertido dinámico: {patrimonio_inversiones_total:,.2f} €")
+            st.caption(f"Tienes actualmente un total de **{len(st.session_state.inversiones)}** inversiones configuradas.")
 
     with c_v2:
         with st.container(border=True):
             st.markdown("#### 3. Estado de tu Hipoteca")
             st.metric("Cuota Real Mensual", f"{cuota_real_total:,.2f} €", f"Recibo + {coste_mensual_seguros:.1f} €/mes en seguros", delta_color="inverse")
-            st.metric("Tiempo pendiente de contrato", f"{anos_normal:.1f} años", f"{intereses_totales_normal:,.2f} € pendientes por regalar al banco", delta_color="inverse")
+            st.metric("Tiempo pendiente de contrato", f"{anos_normal:.1f} años", f"{intereses_totales_normal:,.2f} € pendientes de pago", delta_color="inverse")
 
         with st.container(border=True):
             st.markdown("#### 4. Tu Libertad Financiera")
@@ -192,51 +280,30 @@ with tab_presupuesto:
         st.bar_chart(df_presupuesto)
 
 
-# --- PESTAÑA 3: RENDIMIENTO DE INVERSIONES (RESULTADOS GRÁFICOS ABAJO) ---
+# --- PESTAÑA 3: RENDIMIENTO DE INVERSIONES (Tus Nuevas Gráficas Cruzadas) ---
 with tab_inversion:
     st.markdown("---")
-    st.markdown("### 📊 Gráficas de Rendimiento y Análisis Financiero")
+    st.markdown("### 📊 Gráficas de Rendimiento y Proyecciones")
     
-    if tipo_inversion == "Interés Compuesto (ETFs / Fondos)":
-        interes_estimado = 0.07
-        lista_anos, lista_capital = [], []
-        tot = cap_sim_inicial
-        for ano in range(1, anos_simulacion + 1):
-            tot = (tot + (aport_sim_mensual * 12)) * (1 + interes_estimado)
-            lista_anos.append(f"Año {ano}")
-            lista_capital.append(tot)
+    if len(st.session_state.inversiones) > 0:
+        col_g_ind, col_g_glob = st.columns(2)
+        
+        with col_g_ind:
+            st.markdown("#### 📈 Evolución Individual de cada Inversión")
+            # Convertimos el diccionario individual en Dataframe numérico indexado por Año
+            df_ind = pd.DataFrame(dict_graficas_individuales, index=cronologia_anos)
+            st.line_chart(df_ind)
+            st.caption("Visualiza de forma independiente el crecimiento y la tendencia de cada uno de tus activos.")
             
-        col_res1, col_res2 = st.columns([1, 2])
-        with col_res1:
-            st.metric("Capital Final Estimado", f"{tot:,.2f} €")
-            st.metric("Intereses Generados", f"{tot - (cap_sim_inicial + (aport_sim_mensual*12*anos_simulacion)):,.2f} €")
-        with col_res2:
-            df_compuesto = pd.DataFrame({"Evolución Patrimonio (€)": lista_capital}, index=lista_anos)
-            st.line_chart(df_compuesto)
-            
-    elif tipo_inversion == "Rentabilidad Inmobiliaria (Ladrillo)":
-        inversion_total_real = precio_compra + gastos_iniciales
-        ingresos_anuales_brutos = alquiler_mensual * 12
-        ingresos_anuales_netos = ingresos_anuales_brutos - gastos_anuales_vivienda
-        rent_bruta = (ingresos_anuales_brutos / inversion_total_real) * 100
-        rent_neta = (ingresos_anuales_netos / inversion_total_real) * 100
-        
-        col_in1, col_in2, col_in3 = st.columns(3)
-        col_in1.metric("Inversión Total Real", f"{inversion_total_real:,.2f} €")
-        col_in2.metric("Rentabilidad Bruta", f"{rent_bruta:.2f}%")
-        col_in3.metric("Rentabilidad Neta Anual", f"{rent_neta:.2f}%")
-        
-        df_inmo = pd.DataFrame({
-            "Importe Anual (€)": [ingresos_anuales_brutos, gastos_anuales_vivienda, ingresos_anuales_netos]
-        }, index=["Ingresos Brutos", "Gastos Operativos", "Beneficio Neto"])
-        st.bar_chart(df_inmo)
-        
-    elif tipo_inversion == "ROI Simple":
-        beneficio_neto_roi = valor_final_roi - capital_invertido_roi
-        roi_porcentaje = (beneficio_neto_roi / capital_invertido_roi) * 100 if capital_invertido_roi > 0 else 0
-        col_r1, col_r2 = st.columns(2)
-        col_r1.metric("Beneficio Neto Limpio", f"{beneficio_neto_roi:,.2f} €")
-        col_r2.metric("Retorno Inversión (ROI)", f"{roi_porcentaje:.2f}%")
+        with col_g_glob:
+            st.markdown("#### 🌍 Tu Cartera de Inversión Global (Acumulado)")
+            # Sumamos fila por fila todas las columnas de inversión para obtener la masa patrimonial unificada
+            df_glob_prep = pd.DataFrame(datos_grafica_global).set_index("Año")
+            df_total_acumulado = pd.DataFrame({"Patrimonio Invertido Total (€)": df_glob_prep.sum(axis=1)}, index=cronologia_anos)
+            st.area_chart(df_total_acumulado)
+            st.caption("Gráfica acumulada de toda tu riqueza invertida a lo largo de los próximos 15 años.")
+    else:
+        st.warning("No tienes ninguna inversión configurada. Pulsa el botón '➕ Añadir Nueva Inversión' en la parte superior.")
 
 
 # --- PESTAÑA 4: RESULTADOS HIPOTECA ---
@@ -304,17 +371,23 @@ with tab_ia:
                 genai.configure(api_key=api_key_input)
                 model = genai.GenerativeModel('gemini-1.5-flash')
                 
+                # Construimos un resumen en texto de las inversiones dinámicas para alimentar el prompt de la IA
+                resumen_inv_ia = ""
+                for item in st.session_state.inversiones:
+                    resumen_inv_ia += f"- {item['nombre']} ({item['tipo']}): Valor actual de {item['valor_actual']} €.\n"
+
                 prompt = f"""
-                Actúa como un asesor financiero de élite. Analiza este mapa patrimonial:
+                Actúa como un asesor financiero de élite. Analiza este mapa patrimonial completo:
                 - Ingresos totales (con extras prorrateados): {ingresos_totales_calculados:.2f} €/mes
                 - Ahorro mensual: {ahorro_mensual_total} €/mes
-                - Patrimonio Neto: {patrimonio_neto_total} € (Efectivo: {capital_inicial} €, Inmuebles: {valor_inmuebles} €, ETFs: {valor_etfs} €, Otros: {valor_otros} €)
-                - Hipoteca: Debe {capital_pendiente} € al {interes_anual_actual}%. Cuota recibo: {cuota_mensual_actual} €/mes. Seguros vinculados: {seguros_anuales_banco} €/año.
-                - Meta libertad financiera: {num_libertad} €
+                - Desglose de Inversiones Actuales:\n{resumen_inv_ia}
+                - Patrimonio Neto Total: {patrimonio_neto_total:.2f} € (incluyendo {capital_inicial} € de dinero líquido)
+                - Hipoteca bancaria: Debe {capital_pendiente} € al {interes_anual_actual}%. Cuota recibo: {cuota_mensual_actual} €/mes. Seguros vinculados: {seguros_anuales_banco} €/año.
+                - Meta libertad financiera calculada: {num_libertad} €
                 
-                Genera un análisis profesional rápido de 3 bloques sobre su diversificación, los seguros del banco y si conviene usar el dinero extra en inversión o en liquidar hipoteca.
+                Genera un análisis profesional rápido de 3 bloques sobre la diversificación de su cartera dinámica, el impacto de los seguros vinculados y un veredicto estratégico sobre si priorizar la amortización de deuda o la aportación a estas inversiones.
                 """
-                with st.spinner("La IA está cruzando los datos..."):
+                with st.spinner("La IA está cruzando los datos dinámicos de tu cartera..."):
                     response = model.generate_content(prompt)
                     st.markdown(response.text)
             except Exception as e:

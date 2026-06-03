@@ -59,16 +59,18 @@ VALORES_POR_DEFECTO = {
     "inyeccion_capital_unica": 0
 }
 
-# Carga inicial o lectura desde la URL
-if "db" not in st.query_params:
-    if "datos_usuario" not in st.session_state:
-        st.session_state.datos_usuario = VALORES_POR_DEFECTO.copy()
-else:
-    try:
-        st.session_state.datos_usuario = json.loads(st.query_params["db"])
-    except:
-        if "datos_usuario" not in st.session_state:
-            st.session_state.datos_usuario = VALORES_POR_DEFECTO.copy()
+# Carga inicial blindada contra KeyErrors mediante .get()
+if "datos_usuario" not in st.session_state:
+    st.session_state.datos_usuario = VALORES_POR_DEFECTO.copy()
+    
+    if "db" in st.query_params:
+        try:
+            datos_url = json.loads(st.query_params["db"])
+            # Rellenamos solo lo que venga en la URL, si falta algo se queda el valor por defecto
+            for clave, valor in datos_url.items():
+                st.session_state.datos_usuario[clave] = valor
+        except:
+            pass
 
 du = st.session_state.datos_usuario
 
@@ -84,15 +86,15 @@ with st.sidebar.expander("🔑 Inteligencia Artificial (Gemini)", expanded=False
     api_key_input = st.text_input("Introduce tu API Key:", type="password")
 
 with st.sidebar.expander("📥 Tus Flujos de Caja", expanded=True):
-    du["ingresos_mensuales"] = st.number_input("Ingresos netos al mes (€)", value=du["ingresos_mensuales"], step=100, on_change=guardar_automatico)
-    du["dinero_extra_anual"] = st.number_input("Pagas/Bonus extras al año (€)", value=du["dinero_extra_anual"], step=500, on_change=guardar_automatico)
-    du["ahorro_mensual_total"] = st.number_input("Tu ahorro real al mes (€)", value=du["ahorro_mensual_total"], step=50, on_change=guardar_automatico)
-    du["capital_inicial"] = st.number_input("Efectivo / Fondo Emergencia (€)", value=du["capital_inicial"], step=500, on_change=guardar_automatico)
+    du["ingresos_mensuales"] = st.number_input("Ingresos netos al mes (€)", value=int(du.get("ingresos_mensuales", 2500)), step=100, on_change=guardar_automatico)
+    du["dinero_extra_anual"] = st.number_input("Pagas/Bonus extras al año (€)", value=int(du.get("dinero_extra_anual", 3000)), step=500, on_change=guardar_automatico)
+    du["ahorro_mensual_total"] = st.number_input("Tu ahorro real al mes (€)", value=int(du.get("ahorro_mensual_total", 600)), step=50, on_change=guardar_automatico)
+    du["capital_inicial"] = st.number_input("Efectivo / Fondo Emergencia (€)", value=int(du.get("capital_inicial", 8000)), step=500, on_change=guardar_automatico)
 
 with st.sidebar.expander("🛡️ Simulador de Entorno Económico", expanded=True):
-    du["inflacion_anual"] = st.number_input("Inflación anual estimada (%)", value=float(du["inflacion_anual"]), step=0.1, on_change=guardar_automatico)
-    du["anos_proyeccion"] = st.slider("Años a proyectar en el futuro", min_value=5, max_value=40, value=int(du["anos_proyeccion"]), step=1, on_change=guardar_automatico)
-    du["activar_crisis"] = st.toggle("💥 Activar 'Test de Estrés' (Crisis de mercado)", value=bool(du["activar_crisis"]), on_change=guardar_automatico)
+    du["inflacion_anual"] = st.number_input("Inflación anual estimada (%)", value=float(du.get("inflacion_anual", 2.5)), step=0.1, on_change=guardar_automatico)
+    du["anos_proyeccion"] = st.slider("Años a proyectar en el futuro", min_value=5, max_value=40, value=int(du.get("anos_proyeccion", 15)), step=1, on_change=guardar_automatico)
+    du["activar_crisis"] = st.toggle("💥 Activar 'Test de Estrés' (Crisis de mercado)", value=bool(du.get("activar_crisis", False)), on_change=guardar_automatico)
     if du["activar_crisis"]:
         st.sidebar.caption("⚠️ Se simulará un desplome del 25% en tus activos financieros en el Año 2 de la proyección.")
 
@@ -119,7 +121,7 @@ datos_grafica_real = {"Año": cronologia_anos}
 dict_distribucion_activos = {"Efectivo": du["capital_inicial"]}
 
 # Inicializamos estructuras por si no hay inversiones
-for item in du["inversiones"]:
+for item in du.get("inversiones", []):
     dict_distribucion_activos[item["nombre"]] = item["valor_actual"]
 
 with tab_inversion:
@@ -136,7 +138,7 @@ with tab_inversion:
         guardar_automatico()
         st.rerun()
 
-    for idx, inv in enumerate(du["inversiones"]):
+    for idx, inv in enumerate(du.get("inversiones", [])):
         with st.container(border=True):
             col_c1, col_c2, col_c3 = st.columns([2, 2, 1])
             with col_c1:
@@ -226,16 +228,16 @@ with tab_inversion:
 with tab_hipoteca:
     st.subheader("🏠 Análisis Técnico y Estratégico de Deuda Bancaria")
     col1, col2, col3, col4 = st.columns(4)
-    with col1: du["tipo_hipoteca"] = st.selectbox("Tipo de interés:", ["Fija", "Variable", "Mixta"], index=["Fija", "Variable", "Mixta"].index(du["tipo_hipoteca"]), on_change=guardar_automatico)
-    with col2: du["capital_original"] = st.number_input("Capital prestado original (€)", value=int(du["capital_original"]), step=5000, on_change=guardar_automatico)
-    with col3: du["capital_pendiente"] = st.number_input("Capital vivo actual (€)", value=int(du["capital_pendiente"]), step=5000, on_change=guardar_automatico)
-    with col4: du["interes_anual_actual"] = st.number_input("Tipo de interés anual (%)", value=float(du["interes_anual_actual"]), step=0.1, on_change=guardar_automatico)
+    with col1: du["tipo_hipoteca"] = st.selectbox("Tipo de interés:", ["Fija", "Variable", "Mixta"], index=["Fija", "Variable", "Mixta"].index(du.get("tipo_hipoteca", "Fija")), on_change=guardar_automatico)
+    with col2: du["capital_original"] = st.number_input("Capital prestado original (€)", value=int(du.get("capital_original", 150000)), step=5000, on_change=guardar_automatico)
+    with col3: du["capital_pendiente"] = st.number_input("Capital vivo actual (€)", value=int(du.get("capital_pendiente", 115000)), step=5000, on_change=guardar_automatico)
+    with col4: du["interes_anual_actual"] = st.number_input("Tipo de interés anual (%)", value=float(du.get("interes_anual_actual", 3.2)), step=0.1, on_change=guardar_automatico)
     
     col5, col6, col7, col8 = st.columns(4)
-    with col5: du["cuota_mensual_actual"] = st.number_input("Cuota del recibo mensual (€)", value=int(du["cuota_mensual_actual"]), step=50, on_change=guardar_automatico)
-    with col6: du["seguros_anuales_banco"] = st.number_input("Seguros obligatorios / año (€)", value=int(du["seguros_anuales_banco"]), step=50, on_change=guardar_automatico)
-    with col7: du["amortizacion_extra"] = st.number_input("Plan amortización extra mensual (€)", value=int(du["amortizacion_extra"]), step=50, on_change=guardar_automatico)
-    with col8: du["inyeccion_capital_unica"] = st.number_input("Inyección amortización única ya (€)", value=int(du["inyeccion_capital_unica"]), step=1000, on_change=guardar_automatico)
+    with col5: du["cuota_mensual_actual"] = st.number_input("Cuota del recibo mensual (€)", value=int(du.get("cuota_mensual_actual", 580)), step=50, on_change=guardar_automatico)
+    with col6: du["seguros_anuales_banco"] = st.number_input("Seguros obligatorios / año (€)", value=int(du.get("seguros_anuales_banco", 360)), step=50, on_change=guardar_automatico)
+    with col7: du["amortizacion_extra"] = st.number_input("Plan amortización extra mensual (€)", value=int(du.get("amortizacion_extra", 0)), step=50, on_change=guardar_automatico)
+    with col8: du["inyeccion_capital_unica"] = st.number_input("Inyección amortización única ya (€)", value=int(du.get("inyeccion_capital_unica", 0)), step=1000, on_change=guardar_automatico)
 
     tasa_mensual = (du["interes_anual_actual"] / 100) / 12
     coste_mensual_seguros = du["seguros_anuales_banco"] / 12
@@ -243,7 +245,7 @@ with tab_hipoteca:
 
     if du["cuota_mensual_actual"] > (du["capital_pendiente"] * tasa_mensual):
         interes_mes_actual = du["capital_pendiente"] * tasa_mensual
-        amortizacion_capital_mes = du["cuota_mensual_actual"] - interes_mes_actual
+        amortizacion_capital_mes = du["cuota_financiera_verdadera"] - interes_mes_actual
         meses_contrato = -math.log(1 - (du["capital_pendiente"] * tasa_mensual) / du["cuota_mensual_actual"]) / math.log(1 + tasa_mensual)
         anos_contrato_restantes = meses_contrato / 12
         intereses_totales_banco = (du["cuota_mensual_actual"] * meses_contrato) - du["capital_pendiente"]
@@ -332,7 +334,7 @@ with tab_inversion:
     st.markdown("---")
     st.subheader("📊 Modelado de Escenarios de Riqueza Futura")
     
-    if len(du["inversiones"]) > 0:
+    if len(du.get("inversiones", [])) > 0:
         df_prep_nom = pd.DataFrame(datos_grafica_nominal).set_index("Año")
         df_total_nom = pd.DataFrame({"Valor Nominal (Dinero Futuro)": df_prep_nom.sum(axis=1)})
         
@@ -361,7 +363,7 @@ with tab_hipoteca:
         st.subheader("🧠 Motor Analítico: ¿Priorizar Deuda o Invertir?")
         
         rentabilidad_media_activos = 0.0
-        if len(du["inversiones"]) > 0:
+        if len(du.get("inversiones", [])) > 0:
             tasas = [i["interes_anual"] for i in du["inversiones"] if "interes_anual" in i]
             rentabilidad_media_activos = sum(tasas) / len(tasas) if tasas else 6.0
         else:
@@ -426,7 +428,7 @@ with tab_ia:
                 model = genai.GenerativeModel('gemini-1.5-flash')
                 
                 resumen_activos = ""
-                for i in du["inversiones"]:
+                for i in du.get("inversiones", []):
                     resumen_activos += f"- {i['nombre']} ({i['tipo']}): Valor: {i['valor_actual']} €. Rentabilidad: {i.get('interes_anual', 0)}%\n"
 
                 prompt = f"""

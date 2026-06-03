@@ -170,7 +170,6 @@ with tab_inversion:
                 acumulado_nom = inv["valor_actual"]
                 acumulado_real = inv["valor_actual"]
                 for i, ano in enumerate(cronologia_anos):
-                    # Simulación de crisis en el año 2 si está activada
                     if du["activar_crisis"] and ano == 2:
                         acumulado_nom = acumulado_nom * 0.75
                         acumulado_real = acumulado_real * 0.75
@@ -178,7 +177,6 @@ with tab_inversion:
                     acumulado_nom = (acumulado_nom + (inv["aportacion_mensual"] * 12)) * (1 + (inv["interes_anual"] / 100))
                     proyeccion_nominal.append(acumulado_nom)
                     
-                    # Descontamos el efecto inflación de manera compuesta
                     rendimiento_real = (inv["interes_anual"] - du["inflacion_anual"]) / 100
                     acumulado_real = (acumulado_real + (inv["aportacion_mensual"] * 12)) * (1 + rendimiento_real)
                     proyeccion_real.append(acumulado_real)
@@ -201,14 +199,13 @@ with tab_inversion:
                     acumulado_nom += flujo_neto
                     proyeccion_nominal.append(acumulado_nom)
                     
-                    # El ladrillo suele indexarse a la inflación, simulamos estabilidad de poder adquisitivo
                     acumulado_real += (flujo_neto / ((1 + (du["inflacion_anual"]/100)) ** ano))
                     proyeccion_real.append(acumulado_real)
 
             elif inv["tipo"] == "ROI Simple":
                 c1, c2 = st.columns(2)
-                with c1: inv["capital_invertido"] = st.number_input("Dinero aportado original (€)", value=float(inv["capital_invertido"]), key=f"r1_{idx}", step=500.0, on_change=guardar_automatico)
-                with c2: inv["valor_final"] = st.number_input("Valor de valoración actual (€)", value=float(inv["valor_final"]), key=f"r2_{idx}", step=500.0, on_change=guardar_automatico)
+                with c1: inv["capital_invertido"] = st.number_input("Dinero invertido original (€)", value=float(inv["capital_invertido"]), key=f"r1_{idx}", step=500.0, on_change=guardar_automatico)
+                with c2: inv["valor_final"] = st.number_input("Valor actual (€)", value=float(inv["valor_final"]), key=f"r2_{idx}", step=500.0, on_change=guardar_automatico)
                 
                 inv["valor_actual"] = inv["valor_final"]
                 patrimonio_inversiones_total += inv["valor_actual"]
@@ -257,4 +254,202 @@ with tab_hipoteca:
 # 📊 VISUALIZACIÓN DE MÉTRICAS PREMIUM (PESTAÑA 1)
 # ==========================================
 with tab_resumen:
-    st.subheader("🏁 Cuadro de Mandos Patrim
+    st.subheader("👑 Cuadro de Mandos Patrimonial")
+    
+    c_kpi1, c_kpi2, c_kpi3 = st.columns(3)
+    with c_kpi1:
+        with st.container(border=True):
+            st.markdown("<p style='color:#777; margin:0;'>PATRIMONIO NETO ACTUAL</p>", unsafe_allow_html=True)
+            st.markdown(f"## {patrimonio_neto_global:,.2f} €")
+            st.caption(f"Líquido: {du['capital_inicial']:,} € | En Activos: {patrimonio_inversiones_total:,.2f} €")
+    with c_kpi2:
+        with st.container(border=True):
+            st.markdown("<p style='color:#777; margin:0;'>TASA DE AHORRO MENSUAL</p>", unsafe_allow_html=True)
+            tasa_ahorro = (du["ahorro_mensual_total"] / ingresos_totales) * 100
+            color_tasa = "green" if tasa_ahorro >= 20 else "orange" if tasa_ahorro >= 10 else "red"
+            st.markdown(f"<h2 style='color:{color_tasa}; margin:0;'>{tasa_ahorro:.1f}%</h2>", unsafe_allow_html=True)
+            st.caption(f"Guardas {du['ahorro_mensual_total']} € de {ingresos_totales:,.0f} € netos.")
+    with c_kpi3:
+        with st.container(border=True):
+            st.markdown("<p style='color:#777; margin:0;'>SALUD DE LA HIPOTECA</p>", unsafe_allow_html=True)
+            st.markdown(f"## {anos_contrato_restantes:.1f} años")
+            st.caption(f"Deuda pendiente: {du['capital_pendiente']:,} € | Seguros: {coste_mensual_seguros:,.1f} €/mes")
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    col_dash1, col_dash2 = st.columns([2, 3])
+    with col_dash1:
+        with st.container(border=True):
+            st.markdown("#### 🍩 Distribución de Activos Reales (Asset Allocation)")
+            df_pie = pd.DataFrame({
+                "Activo": list(dict_distribucion_activos.keys()),
+                "Valor (€)": list(dict_distribucion_activos.values())
+            })
+            fig_pie = px.pie(df_pie, values="Valor (€)", names="Activo", hole=0.4, color_discrete_sequence=px.colors.qualitative.Safe)
+            fig_pie.update_layout(margin=dict(t=10, b=10, l=10, r=10), height=280, showlegend=True)
+            st.plotly_chart(fig_pie, use_container_width=True)
+    with col_dash2:
+        with st.container(border=True):
+            st.markdown("#### 🎯 Ruta Hacia la Libertad Financiera")
+            porcentaje_meta = (patrimonio_neto_global / num_libertad) * 100 if num_libertad > 0 else 0
+            st.markdown(f"Has consolidado el **{porcentaje_meta:.1f}%** de tu meta de independencia financiera.")
+            st.progress(min(porcentaje_meta / 100, 1.0))
+            st.info(f"💡 **Objetivo:** Necesitas acumular **{num_libertad:,.0f} €** (Regla del 4% sobre tus gastos actuales) para vivir de rendimientos.")
+
+# ==========================================
+# 🥗 PESTAÑA 2: PRESUPUESTO INTERACTIVO (PLOTLY)
+# ==========================================
+with tab_presupuesto:
+    st.subheader("🥗 Optimización del Presupuesto Estratégico (Regla 50/30/20)")
+    nec, cap, aho_rec = ingresos_totales * 0.5, ingresos_totales * 0.3, ingresos_totales * 0.2
+    
+    col_p1, col_p2 = st.columns([2, 3])
+    with col_p1:
+        st.markdown(f"""
+        - **🏠 Costes Fijos / Necesidades (50%):** Máximo **{nec:,.2f} €/mes**. *(Vivienda, facturas, comida)*
+        - **🎉 Estilo de vida / Caprichos (30%):** Máximo **{cap:,.2f} €/mes**. *(Ocio, viajes, restaurantes)*
+        - **🐷 Inversión / Ahorro Mínimo (20%):** Deberías guardar **{aho_rec:,.2f} €/mes**.
+        ---
+        Tu tasa de ahorro autodeclarada actual es de **{du['ahorro_mensual_total']:,.2f} €/mes**.
+        """)
+        if du['ahorro_mensual_total'] >= aho_rec:
+            st.success("🎉 ¡Excelente! Estás ahorrando por encima de los estándares recomendados.")
+        else:
+            st.warning("⚠️ Tu ahorro actual está por debajo de la regla del 20%. Revisa gastos.")
+            
+    with col_p2:
+        df_p = pd.DataFrame({
+            "Categoría": ["Necesidades (50%)", "Caprichos (30%)", "Ahorro Rec. (20%)", "Tu Ahorro Real"],
+            "Importe Mensual (€)": [nec, cap, aho_rec, du["ahorro_mensual_total"]]
+        })
+        fig_bar_p = px.bar(df_p, x="Categoría", y="Importe Mensual (€)", color="Categoría", color_discrete_sequence=px.colors.qualitative.Pastel)
+        fig_bar_p.update_layout(height=300, showlegend=False, margin=dict(t=10, b=10, l=10, r=10))
+        st.plotly_chart(fig_bar_p, use_container_width=True)
+
+# ==========================================
+# 📈 PESTAÑA 3: RENDIMIENTO CON AJUSTE DE INFLACIÓN Y CRISIS
+# ==========================================
+with tab_inversion:
+    st.markdown("---")
+    st.subheader("📊 Modelado de Escenarios de Riqueza Futura")
+    
+    if len(du["inversiones"]) > 0:
+        df_prep_nom = pd.DataFrame(datos_grafica_nominal).set_index("Año")
+        df_total_nom = pd.DataFrame({"Valor Nominal (Dinero Futuro)": df_prep_nom.sum(axis=1)})
+        
+        df_prep_real = pd.DataFrame(datos_grafica_real).set_index("Año")
+        df_total_real = pd.DataFrame({"Valor Real (Poder Adquisitivo Corregido)": df_prep_real.sum(axis=1)})
+        
+        df_proyeccion_final = df_total_nom.join(df_total_real).reset_index()
+        df_melted = df_proyeccion_final.melt(id_vars=["Año"], var_name="Métrica", value_name="Capital Acumulado (€)")
+        
+        fig_lineas = px.line(df_melted, x="Año", y="Capital Acumulado (€)", color="Métrica", 
+                             title=f"Evolución Patrimonial Proyectada a {du['anos_proyeccion']} años",
+                             color_discrete_sequence=["#1f77b4", "#ff7f0e"])
+        fig_lineas.update_layout(height=400, legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01))
+        st.plotly_chart(fig_lineas, use_container_width=True)
+        
+        st.caption(f"ℹ️ La línea azul es el dinero nominal. La línea naranja descuenta un {du['inflacion_anual']}% anual de inflación.")
+    else:
+        st.warning("Añade activos para ver el gráfico de proyecciones.")
+
+# ==========================================
+# 🏠 PESTAÑA 4: CONSULTORÍA ESTRATÉGICA AVANZADA HIPOTECA VS INVERSIÓN
+# ==========================================
+with tab_hipoteca:
+    st.markdown("---")
+    if anos_contrato_restantes > 0:
+        st.subheader("🧠 Motor Analítico: ¿Priorizar Deuda o Invertir?")
+        
+        rentabilidad_media_activos = 0.0
+        if len(du["inversiones"]) > 0:
+            tasas = [i["interes_anual"] for i in du["inversiones"] if "interes_anual" in i]
+            rentabilidad_media_activos = sum(tasas) / len(tasas) if tasas else 6.0
+        else:
+            rentabilidad_media_activos = 6.0
+
+        diferencial_arbitraje = rentabilidad_media_activos - du["interes_anual_actual"]
+
+        col_st1, col_st2 = st.columns([3, 2])
+        with col_st1:
+            st.markdown(f"#### ⚖️ Veredicto del Consultor Financiero Automatizado")
+            st.write(f"• Coste hipoteca: **{du['interes_anual_actual']}%**. Rendimiento medio inversiones: **{rentabilidad_media_activos:.1f}%**.")
+            
+            if diferencial_arbitraje > 1.0:
+                st.success(f"📈 **VEREDICTO: PRIORIZAR INVERSIÓN**. Ganas más dinero invirtiendo que cancelando esta hipoteca.")
+            elif diferencial_arbitraje < -0.5:
+                st.error(f"🏠 **VEREDICTO: PRIORIZAR AMORTIZACIÓN**. Tu hipoteca te cuesta más de lo que rinde tu dinero. Cancela deuda.")
+            else:
+                st.warning(f"⚖️ **VEREDICTO: ESCENARIO MIXTO**. Coste y rendimiento parejos. Decide según tu perfil de riesgo.")
+        with col_st2:
+            df_arbitraje = pd.DataFrame({
+                "Concepto": ["Coste Hipoteca", "Rendimiento Inversión"],
+                "Porcentaje (%)": [du["interes_anual_actual"], rentabilidad_media_activos]
+            })
+            fig_arb = px.bar(df_arbitraje, x="Concepto", y="Porcentaje (%)", color="Concepto", color_discrete_sequence=["#d62728", "#2ca02c"])
+            fig_arb.update_layout(height=220, showlegend=False, margin=dict(t=10, b=10, l=10, r=10))
+            st.plotly_chart(fig_arb, use_container_width=True)
+
+        capital_pendiente_neto = du["capital_pendiente"] - du["inyeccion_capital_unica"]
+        if du["amortizacion_extra"] > 0 or du["inyeccion_capital_unica"] > 0:
+            cuota_con_extra = du["cuota_mensual_actual"] + du["amortizacion_extra"]
+            if cuota_con_extra > (capital_pendiente_neto * tasa_mensual):
+                meses_extra = -math.log(1 - (capital_pendiente_neto * tasa_mensual) / cuota_con_extra) / math.log(1 + tasa_mensual)
+                anos_extra = meses_extra / 12
+                intereses_totales_extra = (du["inyeccion_capital_unica"] + (cuota_con_extra * meses_extra)) - du["capital_pendiente"]
+                
+                st.markdown("#### 🔥 Resultados de tu Plan de Aceleración Activo")
+                col_m1, col_m2 = st.columns(2)
+                with col_m1:
+                    st.metric("Años ahorrados al banco", f"{(anos_contrato_restantes - anos_extra):.1f} años menos")
+                with col_m2:
+                    st.metric("Intereses salvados", f"{(intereses_totales_banco - intereses_totales_extra):,.2f} €")
+
+# ==========================================
+# 🕊️ PESTAÑA 5: LIBERTAD FINANCIERA DETALLADA
+# ==========================================
+with tab_libertad:
+    st.subheader("🕊️ Tu Meta de Libertad Financiera (Regla del 4%)")
+    st.error(f"## 🎯 TU NÚMERO OBJETIVO: {num_libertad:,.2f} €")
+    st.write(f"Gastos anuales proyectados: **{gastos_anuales_proyectados:,.2f} €**. Con ese objetivo invertido cubres tu nivel de vida.")
+
+# ==========================================
+# 🤖 PESTAÑA 6: CONSULTORÍA DE IA AVANZADA CRUZADA
+# ==========================================
+with tab_ia:
+    st.subheader("🤖 Dictamen e Informe Estratégico de IA")
+    if not api_key_input:
+        st.warning("🔒 Introduce tu Gemini API Key en la barra lateral para desbloquear la IA.")
+    else:
+        if st.button("🚀 Generar Auditoría Patrimonial Completa"):
+            try:
+                genai.configure(api_key=api_key_input)
+                model = genai.GenerativeModel('gemini-1.5-flash')
+                
+                resumen_activos = ""
+                for i in du["inversiones"]:
+                    resumen_activos += f"- {i['nombre']} ({i['tipo']}): Valor: {i['valor_actual']} €. Rentabilidad: {i.get('interes_anual', 0)}%\n"
+
+                prompt = f"""
+                Eres un analista financiero élite. Analiza este informe patrimonial brevemente:
+                - Ingresos: {ingresos_totales:.2f} €/mes
+                - Ahorro: {du['ahorro_mensual_total']} €/mes ({tasa_ahorro:.1f}%)
+                - Efectivo: {du['capital_inicial']} €
+                - Inversiones:\n{resumen_activos}
+                - Patrimonio Total: {patrimonio_neto_global:.2f} €
+                - Hipoteca: Debe {du['capital_pendiente']} € al {du['interes_anual_actual']}%.
+                - Inflación simulada: {du['inflacion_anual']}%. Crisis activada: {du['activar_crisis']}.
+                
+                Redacta un dictamen conciso de 3 secciones en Markdown elegante:
+                1. Evaluación del Asset Allocation frente a la inflación.
+                2. Crítica del coste de hipoteca vs inversión.
+                3. Una recomendación táctica audaz para llegar a la meta de ({num_libertad:.0f} €).
+                """
+                with st.spinner("La IA está calculando los escenarios económicos..."):
+                    response = model.generate_content(prompt)
+                    st.markdown(response.text)
+            except Exception as e:
+                st.error(f"Error en el motor analítico de IA: {e}")
+
+# Indicador visual de estado de la persistencia automática
+st.sidebar.markdown("---")
+st.sidebar.caption("✅ Autofijado activo. Tus datos se salvan solos con cada click.")

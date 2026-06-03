@@ -1,79 +1,62 @@
 import streamlit as st
-import google.generativeai as genai
 import pandas as pd
 import math
 import json
 import plotly.express as px
 
-# 1. Configuración de pantalla
-st.set_page_config(page_title="Cuadro de Mandos Financiero Pro", layout="wide")
+# Configuración inicial
+st.set_page_config(page_title="Terminal Patrimonial", layout="wide")
 
-# ==========================================
-# 💾 MOTOR DE MEMORIA Y ESTADOS
-# ==========================================
-VALORES_POR_DEFECTO = {
-    "ingresos_mensuales": 2500,
-    "dinero_extra_anual": 3000,
-    "ahorro_mensual_total": 600,
-    "capital_inicial": 8000,
-    "inflacion_anual": 2.5,
-    "activar_crisis": False,
-    "anos_proyeccion": 15,
-    "inversiones": [],
-    "tipo_hipoteca": "Fija",
-    "capital_original": 150000,
-    "capital_pendiente": 115000,
-    "interes_anual_actual": 3.2,
-    "cuota_mensual_actual": 580,
-    "seguros_anuales_banco": 360,
-    "deudas": []
-}
-
+# Inicialización de estado si está vacío
 if "datos_usuario" not in st.session_state:
-    st.session_state.datos_usuario = VALORES_POR_DEFECTO.copy()
+    st.session_state.datos_usuario = {
+        "ingresos_mensuales": 1500,
+        "dinero_extra_anual": 2500,
+        "ahorro_mensual_total": 300,
+        "capital_inicial": 1000,
+        "inversiones": [{"nombre": "Vivienda Manises", "tipo": "Rentabilidad Inmobiliaria (Ladrillo)", "valor_actual": 40000, "precio_compra": 30000, "gastos_iniciales": 10000, "alquiler_mensual": 660, "gastos_mensuales_inv": 300, "gastos_anuales": 500}],
+        "deudas": []
+    }
 
 du = st.session_state.datos_usuario
 
-def guardar_automatico():
-    st.query_params["db"] = json.dumps(st.session_state.datos_usuario)
-
-# ==========================================
-# ⚙️ BARRA LATERAL (CORREGIDA)
-# ==========================================
-st.sidebar.title("⚙️ Configuración Global")
-
-with st.sidebar.expander("📥 Tus Flujos de Caja", expanded=True):
-    du["ingresos_mensuales"] = st.number_input("Ingresos netos al mes (€)", value=int(du["ingresos_mensuales"]), step=100, on_change=guardar_automatico)
-    du["dinero_extra_anual"] = st.number_input("Pagas/Bonus extras al año (€)", value=int(du["dinero_extra_anual"]), step=500, on_change=guardar_automatico)
-    du["ahorro_mensual_total"] = st.number_input("Tu ahorro real al mes (€)", value=int(du["ahorro_mensual_total"]), step=50, on_change=guardar_automatico)
-    du["capital_inicial"] = st.number_input("Efectivo / Liquidez Total (€)", value=int(du["capital_inicial"]), step=500, on_change=guardar_automatico)
-
-# ==========================================
-# 🧮 LÓGICA (Simplificada para evitar errores de sintaxis)
-# ==========================================
+# --- LÓGICA GLOBAL ---
 ingresos_totales = du["ingresos_mensuales"] + (du["dinero_extra_anual"] / 12)
 gastos_vivos = ingresos_totales - du["ahorro_mensual_total"]
 
-# ==========================================
-# 📊 PESTAÑAS
-# ==========================================
+# --- BARRA LATERAL ---
+st.sidebar.title("⚙️ Configuración Global")
+du["ingresos_mensuales"] = st.sidebar.number_input("Ingresos netos al mes (€)", value=du["ingresos_mensuales"])
+du["dinero_extra_anual"] = st.sidebar.number_input("Pagas/Bonus extras al año (€)", value=du["dinero_extra_anual"])
+du["ahorro_mensual_total"] = st.sidebar.number_input("Tu ahorro real al mes (€)", value=du["ahorro_mensual_total"])
+du["capital_inicial"] = st.sidebar.number_input("Efectivo / Liquidez Total (€)", value=du["capital_inicial"])
+
+# --- PESTAÑAS PRINCIPALES ---
 tab1, tab2, tab3 = st.tabs(["👑 Cuadro de Mandos", "🥗 Presupuesto", "📈 Inversión"])
 
 with tab1:
-    st.subheader("Cuadro de Mandos")
-    st.metric("Ingresos Totales", f"{ingresos_totales:,.2f} €")
+    st.subheader("Cuadro de Mandos Patrimonial")
+    c1, c2 = st.columns(2)
+    c1.metric("Ingresos Totales Mensuales", f"{ingresos_totales:,.2f} €")
+    c2.metric("Capacidad de Ahorro", f"{du['ahorro_mensual_total']} €")
     
+    # Gráfica básica de ejemplo
+    df_activos = pd.DataFrame(du["inversiones"])
+    if not df_activos.empty:
+        fig = px.pie(df_activos, values='valor_actual', names='nombre', title="Distribución de Activos")
+        st.plotly_chart(fig)
+
 with tab2:
-    st.subheader("Presupuesto")
-    st.write(f"Gastos de vida estimados: {gastos_vivos:,.2f} €")
+    st.subheader("Presupuesto y Deudas")
+    st.write(f"Tus gastos de vida actuales son: **{gastos_vivos:,.2f} €/mes**.")
+    st.write("Gestiona tus deudas en el panel lateral si es necesario.")
 
 with tab3:
     st.subheader("Inversión")
-    if st.button("➕ Añadir inversión"):
-        du["inversiones"].append({"nombre": "Nuevo Activo", "valor": 0})
-        guardar_automatico()
+    st.write("Lista de activos actuales:")
+    st.json(du["inversiones"])
+    if st.button("Añadir inversión"):
+        du["inversiones"].append({"nombre": "Nuevo Activo", "tipo": "Otro", "valor_actual": 0})
         st.rerun()
-    st.write("Lista de activos:", du["inversiones"])
 
-st.sidebar.markdown("---")
-st.sidebar.caption("✅ Sistema listo y funcional.")
+st.sidebar.success("✅ Dashboard sincronizado.")

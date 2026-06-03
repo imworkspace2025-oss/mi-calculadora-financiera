@@ -435,7 +435,7 @@ with tab_libertad:
     st.write(f"Gastos anuales proyectados: **{gastos_anuales_proyectados:,.2f} €**. Con ese objetivo invertido cubres tu nivel de vida.")
 
 # ==========================================
-# 🤖 PESTAÑA 6: AUDITORÍA DE IA (BLINDADA PARA CLOUD)
+# 🤖 PESTAÑA 6: AUDITORÍA DE IA (BLINDADA PARA CLOUD Y LATIN-1)
 # ==========================================
 with tab_ia:
     st.subheader("🤖 Dictamen e Informe Estratégico de IA", anchor=False)
@@ -444,31 +444,38 @@ with tab_ia:
     else:
         if st.button("🚀 Generar Auditoría Patrimonial Completa"):
             try:
-                # 🛠️ PARCHE CLOUD: Forzamos la comunicación a través de REST clásico para evitar bloqueos de puertos en Streamlit
+                # PARCHE CLOUD: Forzamos la comunicación a través de REST clásico para evitar bloqueos de gRPC en Streamlit
                 genai.configure(api_key=st.session_state.api_key_guardada, transport='rest')
-                model = genai.GenerativeModel('gemini-1.5-flash')
+                model = genai.GenerativeModel('gemini-2.5-flash')
                 
                 resumen_activos = ""
                 for i in du.get("inversiones", []):
-                    resumen_activos += f"- {i['nombre']} ({i['tipo']}): Valor: {i['valor_actual']} €. Rentabilidad: {i.get('interes_anual', 0)}%\n"
+                    resumen_activos += f"- {i['nombre']} ({i['tipo']}): Valor: {i['valor_actual']}. Rentabilidad: {i.get('interes_anual', 0)}%\n"
 
                 prompt = f"""
-                Eres un analista financiero élite. Analiza este informe patrimonial brevemente:
-                - Ingresos: {ingresos_totales:.2f} €/mes
-                - Ahorro: {du['ahorro_mensual_total']} €/mes ({tasa_ahorro:.1f}%)
-                - Efectivo: {du['capital_inicial']} €
+                Eres un analista financiero elite. Analiza este informe patrimonial brevemente:
+                - Ingresos: {ingresos_totales:.2f} /mes
+                - Ahorro: {du['ahorro_mensual_total']} /mes ({tasa_ahorro:.1f}%)
+                - Efectivo: {du['capital_inicial']} 
                 - Inversiones:\n{resumen_activos}
-                - Patrimonio Total: {patrimonio_neto_global:.2f} €
-                - Hipoteca: Debe {du['capital_pendiente']} € al {du['interes_anual_actual']}%.
-                - Inflación simulada: {du['inflacion_anual']}%. Crisis activada: {du['activar_crisis']}.
+                - Patrimonio Total: {patrimonio_neto_global:.2f} 
+                - Hipoteca: Debe {du['capital_pendiente']} al {du['interes_anual_actual']}%.
+                - Inflacion simulada: {du['inflacion_anual']}%. Crisis activada: {du['activar_crisis']}.
                 
                 Redacta un dictamen conciso de 3 secciones en Markdown elegante:
-                1. Evaluación del Asset Allocation frente a la inflación.
-                2. Crítica del coste de hipoteca vs inversión.
-                3. Una recomendación táctica audaz para llegar a la meta de ({num_libertad:.0f} €).
+                1. Evaluacion del Asset Allocation frente a la inflacion.
+                2. Critica del coste de hipoteca vs inversion.
+                3. Una recomendacion tactica audaz para llegar a la meta de ({num_libertad:.0f}).
                 """
+                
+                # 🛡️ DESINFECCIÓN ESTRICTA LATIN-1: El transporte REST de google-generativeai tiene un bug
+                # en Streamlit Cloud que intenta serializar los textos usando latin-1. 
+                # Reemplazamos los símbolos de Euros y purgamos cualquier emoji oculto.
+                prompt_seguro = prompt.replace("€", "EUR")
+                prompt_seguro = "".join([c for c in prompt_seguro if ord(c) < 256])
+                
                 with st.spinner("La IA está calculando los escenarios económicos..."):
-                    response = model.generate_content(prompt)
+                    response = model.generate_content(prompt_seguro)
                     st.markdown(response.text)
             except Exception as e:
                 st.error(f"Error en el motor analítico de IA: {e}")

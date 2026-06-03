@@ -91,15 +91,22 @@ with st.sidebar.expander("🔑 Inteligencia Artificial (Gemini)", expanded=False
     api_key_input = st.text_input("Introduce tu API Key:", type="password")
 
 with st.sidebar.expander("📥 Tus Flujos de Caja", expanded=True):
-    du["ingresos_mensuales"] = st.number_input("Ingresos netos al mes (€)", value=int(du["ingresos_mensuales"]), step=100, on_change=guardar_automatico)
-    du["dinero_extra_anual"] = st.number_input("Pagas/Bonus extras al año (€)", value=int(du["dinero_extra_anual"]), step=500, on_change=guardar_automatico)
-    du["ahorro_mensual_total"] = st.number_input("Tu ahorro real al mes (€)", value=int(du["ahorro_mensual_total"]), step=50, on_change=guardar_automatico)
-    du["capital_inicial"] = st.number_input("Efectivo / Fondo Emergencia (€)", value=int(du["capital_inicial"]), step=500, on_change=guardar_automatico)
+    du["ingresos_mensuales"] = st.number_input("Ingresos netos al mes (€)", value=int(du["ingresos_mensuales"]), step=100, on_change=guardar_automatico, help="Tus ingresos limpios mensuales recurrentes (nómina líquida, facturación neta, etc.).")
+    du["dinero_extra_anual"] = st.number_input("Pagas/Bonus extras al año (€)", value=int(du["dinero_extra_anual"]), step=500, on_change=guardar_automatico, help="Suma de pagas extraordinarias, bonus anuales u otros ingresos variables anualizados.")
+    du["ahorro_mensual_total"] = st.number_input("Tu ahorro real al mes (€)", value=int(du["ahorro_mensual_total"]), step=50, on_change=guardar_automatico, help="La cantidad de dinero neta que logras apartar y conservar en tu bolsillo cada mes.")
+    du["capital_inicial"] = st.number_input("Efectivo / Fondo Emergencia (€)", value=int(du["capital_inicial"]), step=500, on_change=guardar_automatico, help="Dinero líquido inmediato disponible en cuenta corriente para imprevistos diarios.")
 
 with st.sidebar.expander("🛡️ Simulador de Entorno Económico", expanded=True):
-    du["inflacion_anual"] = st.number_input("Inflación anual estimada (%)", value=float(du["inflacion_anual"]), step=0.1, on_change=guardar_automatico)
-    du["anos_proyeccion"] = st.slider("Años a proyectar en el futuro", min_value=5, max_value=40, value=int(du["anos_proyeccion"]), step=1, on_change=guardar_automatico)
-    du["activar_crisis"] = st.toggle("💥 Activar 'Test de Estrés' (Crisis de mercado)", value=bool(du["activar_crisis"]), on_change=guardar_automatico)
+    du["inflacion_anual"] = st.number_input("Inflación anual estimada (%)", value=float(du["inflacion_anual"]), step=0.1, on_change=guardar_automatico, help="El ritmo estimado al que suben los precios de la vida. Reduce tu poder adquisitivo real en las gráficas a futuro.")
+    du["anos_proyeccion"] = st.slider("Años a proyectar en el futuro", min_value=5, max_value=40, value=int(du["anos_proyeccion"]), step=1, on_change=guardar_automatico, help="Línea temporal en años para evaluar el impacto del interés compuesto en tu patrimonio.")
+    
+    # CAMBIO SOLICITADO: TOOLTIP DETALLADO PARA EL TEST DE ESTRÉS
+    du["activar_crisis"] = st.toggle(
+        "💥 Activar 'Test de Estrés' (Crisis de mercado)", 
+        value=bool(du["activar_crisis"]), 
+        on_change=guardar_automatico,
+        help="Simula un crack bursátil con una caída del 25% en tus fondos financieros durante el Año 2. Úsalo para medir la resiliencia psicológica de tu plan y ver cómo las inyecciones mensuales constantes aceleran tu recuperación económica posterior."
+    )
     if du["activar_crisis"]:
         st.sidebar.caption("⚠️ Se simulará un desplome del 25% en tus activos financieros en el Año 2 de la proyección.")
 
@@ -153,7 +160,8 @@ with tab_inversion:
                     "Naturaleza del activo:", 
                     ["Interés Compuesto (ETFs / Fondos)", "Rentabilidad Inmobiliaria (Ladrillo)", "ROI Simple"],
                     index=["Interés Compuesto (ETFs / Fondos)", "Rentabilidad Inmobiliaria (Ladrillo)", "ROI Simple"].index(inv["tipo"]),
-                    key=f"inv_tipo_{idx}", on_change=guardar_automatico
+                    key=f"inv_tipo_{idx}", on_change=guardar_automatico,
+                    help="Elige el modelo matemático que rige este activo para calcular correctamente sus proyecciones futuras."
                 )
             with col_c3:
                 st.markdown("<br>", unsafe_allow_html=True)
@@ -167,9 +175,9 @@ with tab_inversion:
             
             if inv["tipo"] == "Interés Compuesto (ETFs / Fondos)":
                 c1, c2, c3 = st.columns(3)
-                with c1: inv["valor_actual"] = st.number_input("Capital actual (€)", value=float(inv["valor_actual"]), key=f"f1_{idx}", step=500.0, on_change=guardar_automatico)
-                with c2: inv["aportacion_mensual"] = st.number_input("Inyección mensual (€)", value=float(inv["aportacion_mensual"]), key=f"f2_{idx}", step=50.0, on_change=guardar_automatico)
-                with c3: inv["interes_anual"] = st.number_input("Rendimiento anual Neto (%)", value=float(inv["interes_anual"]), key=f"f3_{idx}", step=0.5, on_change=guardar_automatico)
+                with c1: inv["valor_actual"] = st.number_input("Capital actual (€)", value=float(inv["valor_actual"]), key=f"f1_{idx}", step=500.0, on_change=guardar_automatico, help="El saldo total invertido a día de hoy en esta estrategia.")
+                with c2: inv["aportacion_mensual"] = st.number_input("Inyección mensual (€)", value=float(inv["aportacion_mensual"]), key=f"f2_{idx}", step=50.0, on_change=guardar_automatico, help="Dinero nuevo que aportas desde tu ahorro mes a mes (Estrategia DCA).")
+                with c3: inv["interes_anual"] = st.number_input("Rendimiento anual Neto (%)", value=float(inv["interes_anual"]), key=f"f3_{idx}", step=0.5, on_change=guardar_automatico, help="Rentabilidad media anual esperada del fondo tras descontar comisiones del gestor.")
                 
                 patrimonio_inversiones_total += inv["valor_actual"]
                 dict_distribucion_activos[inv["nombre"]] = inv["valor_actual"]
@@ -190,11 +198,20 @@ with tab_inversion:
 
             elif inv["tipo"] == "Rentabilidad Inmobiliaria (Ladrillo)":
                 c1, c2, c3, c4 = st.columns(4)
-                with c1: inv["precio_compra"] = st.number_input("Precio compra (€)", value=float(inv["precio_compra"]), key=f"l1_{idx}", step=5000.0, on_change=guardar_automatico)
-                with c2: inv["gastos_iniciales"] = st.number_input("Reformas e Impuestos (€)", value=float(inv["gastos_iniciales"]), key=f"l2_{idx}", step=1000.0, on_change=guardar_automatico)
-                with c3: inv["alquiler_mensual"] = st.number_input("Renta mensual líquida (€)", value=float(inv["alquiler_mensual"]), key=f"l3_{idx}", step=50.0, on_change=guardar_automatico)
-                with c4: inv["gastos_anuales"] = st.number_input("Gastos de explotación/año (€)", value=float(inv["gastos_anuales"]), key=f"l4_{idx}", step=100.0, on_change=guardar_automatico)
+                with c1: inv["precio_compra"] = st.number_input("Precio compra (€)", value=float(inv["precio_compra"]), key=f"l1_{idx}", step=5000.0, on_change=guardar_automatico, help="El precio de adquisición escriturado de la propiedad.")
+                with c2: inv["gastos_iniciales"] = st.number_input("Reformas e Impuestos (€)", value=float(inv["gastos_iniciales"]), key=f"l2_{idx}", step=1000.0, on_change=guardar_automatico, help="Gastos de notaría, impuestos (ITP/IVA) y reformas de puesta a punto inicial.")
+                with c3: inv["alquiler_mensual"] = st.number_input("Renta mensual líquida (€)", value=float(inv["alquiler_mensual"]), key=f"l3_{idx}", step=50.0, on_change=guardar_automatico, help="El alquiler mensual bruto cobrado al inquilino. Pon 0 si se trata de tu vivienda habitual.")
                 
+                # CAMBIO SOLICITADO: TOOLTIP DETALLADO PARA EVITAR DUPLICAR GASTOS DE INMUEBLE
+                with c4: inv["gastos_anuales"] = st.number_input(
+                    "Gastos de explotación/año (€)", 
+                    value=float(inv["gastos_anuales"]), 
+                    key=f"l4_{idx}", 
+                    step=100.0, 
+                    on_change=guardar_automatico,
+                    help="Gastos propios de la vivienda (IBI, comunidad, tasa de basuras, mantenimiento y seguros de hogar/impagos). ⚠️ ATENCIÓN: NO metas aquí la cuota de la hipoteca ni los seguros del banco, eso ya se calcula de forma aislada en la sección de hipotecas para evitar duplicar costes."
+                )
+
                 inv["valor_actual"] = inv["precio_compra"] + inv["gastos_iniciales"]
                 patrimonio_inversiones_total += inv["valor_actual"]
                 dict_distribucion_activos[inv["nombre"]] = inv["valor_actual"]
@@ -211,8 +228,8 @@ with tab_inversion:
 
             elif inv["tipo"] == "ROI Simple":
                 c1, c2 = st.columns(2)
-                with c1: inv["capital_invertido"] = st.number_input("Dinero invertido original (€)", value=float(inv["capital_invertido"]), key=f"r1_{idx}", step=500.0, on_change=guardar_automatico)
-                with c2: inv["valor_final"] = st.number_input("Valor actual (€)", value=float(inv["valor_final"]), key=f"r2_{idx}", step=500.0, on_change=guardar_automatico)
+                with c1: inv["capital_invertido"] = st.number_input("Dinero invertido original (€)", value=float(inv["capital_invertido"]), key=f"r1_{idx}", step=500.0, on_change=guardar_automatico, help="El desembolso inicial invertido en este negocio o préstamo.")
+                with c2: inv["valor_final"] = st.number_input("Valor actual (€)", value=float(inv["valor_final"]), key=f"r2_{idx}", step=500.0, on_change=guardar_automatico, help="La tasación o valor actual de mercado de esta inversión.")
                 
                 inv["valor_actual"] = inv["valor_final"]
                 patrimonio_inversiones_total += inv["valor_actual"]
@@ -234,15 +251,15 @@ with tab_hipoteca:
     st.subheader("🏠 Análisis Técnico y Estratégico de Deuda Bancaria")
     col1, col2, col3, col4 = st.columns(4)
     with col1: du["tipo_hipoteca"] = st.selectbox("Tipo de interés:", ["Fija", "Variable", "Mixta"], index=["Fija", "Variable", "Mixta"].index(du["tipo_hipoteca"]), on_change=guardar_automatico)
-    with col2: du["capital_original"] = st.number_input("Capital prestado original (€)", value=int(du["capital_original"]), step=5000, on_change=guardar_automatico)
-    with col3: du["capital_pendiente"] = st.number_input("Capital vivo actual (€)", value=int(du["capital_pendiente"]), step=5000, on_change=guardar_automatico)
-    with col4: du["interes_anual_actual"] = st.number_input("Tipo de interés anual (%)", value=float(du["interes_anual_actual"]), step=0.1, on_change=guardar_automatico)
+    with col2: du["capital_original"] = st.number_input("Capital prestado original (€)", value=int(du["capital_original"]), step=5000, on_change=guardar_automatico, help="La cantidad de dinero total que te prestó inicialmente el banco.")
+    with col3: du["capital_pendiente"] = st.number_input("Capital vivo actual (€)", value=int(du["capital_pendiente"]), step=5000, on_change=guardar_automatico, help="Lo que te queda por pagar hoy al banco para cancelar la deuda por completo.")
+    with col4: du["interes_anual_actual"] = st.number_input("Tipo de interés anual (%)", value=float(du["interes_anual_actual"]), step=0.1, on_change=guardar_automatico, help="El tipo de interés (TIN) que te está aplicando el banco actualmente.")
     
     col5, col6, col7, col8 = st.columns(4)
-    with col5: du["cuota_mensual_actual"] = st.number_input("Cuota del recibo mensual (€)", value=int(du["cuota_mensual_actual"]), step=50, on_change=guardar_automatico)
-    with col6: du["seguros_anuales_banco"] = st.number_input("Seguros obligatorios / año (€)", value=int(du["seguros_anuales_banco"]), step=50, on_change=guardar_automatico)
-    with col7: du["amortizacion_extra"] = st.number_input("Plan amortización extra mensual (€)", value=int(du["amortizacion_extra"]), step=50, on_change=guardar_automatico)
-    with col8: du["inyeccion_capital_unica"] = st.number_input("Inyección amortización única ya (€)", value=int(du["inyeccion_capital_unica"]), step=1000, on_change=guardar_automatico)
+    with col5: du["cuota_mensual_actual"] = st.number_input("Cuota del recibo mensual (€)", value=int(du["cuota_mensual_actual"]), step=50, on_change=guardar_automatico, help="El coste exacto del recibo de la hipoteca que te pasan cada mes por el banco.")
+    with col6: du["seguros_anuales_banco"] = st.number_input("Seguros obligatorios / año (€)", value=int(du["seguros_anuales_banco"]), step=50, on_change=guardar_automatico, help="La suma anual de seguros vinculados obligatorios (vida, hogar vinculante) impuestos por el banco.")
+    with col7: du["amortizacion_extra"] = st.number_input("Plan amortización extra mensual (€)", value=int(du["amortizacion_extra"]), step=50, on_change=guardar_automatico, help="Dinero adicional recurrente que decides inyectar cada mes para quitarte deuda anticipadamente.")
+    with col8: du["inyeccion_capital_unica"] = st.number_input("Inyección amortización única ya (€)", value=int(du["inyeccion_capital_unica"]), step=1000, on_change=guardar_automatico, help="Un pago extraordinario único e inmediato que haces hoy mismo para rebajar el capital pendiente.")
 
     tasa_mensual = (du["interes_anual_actual"] / 100) / 12
     coste_mensual_seguros = du["seguros_anuales_banco"] / 12
@@ -250,7 +267,6 @@ with tab_hipoteca:
 
     if du["cuota_mensual_actual"] > (du["capital_pendiente"] * tasa_mensual):
         interes_mes_actual = du["capital_pendiente"] * tasa_mensual
-        # CORREGIDO: Usamos la variable local directa sin meter el diccionario 'du'
         amortizacion_capital_mes = cuota_financiera_verdadera - interes_mes_actual
         meses_contrato = -math.log(1 - (du["capital_pendiente"] * tasa_mensual) / du["cuota_mensual_actual"]) / math.log(1 + tasa_mensual)
         anos_contrato_restantes = meses_contrato / 12

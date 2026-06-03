@@ -56,12 +56,21 @@ VALORES_POR_DEFECTO = {
     "cuota_mensual_actual": 580,
     "seguros_anuales_banco": 360,
     "amortizacion_extra": 0,
-    "inyeccion_capital_unica": 0
+    "inyeccion_capital_unica": 0,
+    # Nuevos filtros de perfil crediticio y laboral
+    "antiguedad_trabajo": 3,
+    "antiguedad_empresa": 5,
+    "es_autonomo_empresa": False,
+    "facturacion_anual": 45000
 }
 
 # 1. Crear estado inicial si no existe
 if "datos_usuario" not in st.session_state:
     st.session_state.datos_usuario = VALORES_POR_DEFECTO.copy()
+
+# Historial del chat interactivo de IA
+if "historial_chat" not in st.session_state:
+    st.session_state.historial_chat = []
 
 # 2. Carga desde URL si el usuario viene desde un enlace compartido externo
 if "db" in st.query_params:
@@ -105,6 +114,7 @@ with st.sidebar.expander("🔑 Inteligencia Artificial (Gemini)", expanded=not b
         st.success("✅ API Key vinculada y activa")
         if st.button("🔄 Cambiar / Borrar clave"):
             st.session_state.api_key_guardada = ""
+            st.session_state.historial_chat = []
             st.rerun()
 
 with st.sidebar.expander("📥 Tus Flujos de Caja", expanded=True):
@@ -113,7 +123,16 @@ with st.sidebar.expander("📥 Tus Flujos de Caja", expanded=True):
     du["ahorro_mensual_total"] = st.number_input("Tu ahorro real al mes (€)", value=int(du["ahorro_mensual_total"]), step=50, on_change=guardar_automatico)
     du["capital_inicial"] = st.number_input("Efectivo / Fondo Emergencia (€)", value=int(du["capital_inicial"]), step=500, on_change=guardar_automatico)
 
-with st.sidebar.expander("🛡️ Simulador de Entorno Económico", expanded=True):
+# 🚀 NUEVA SECCIÓN: PERFIL CREDITICIO Y FILTROS AVANZADOS CONDICIONALES
+with st.sidebar.expander("💳 Perfil Crediticio y Laboral", expanded=True):
+    du["antiguedad_trabajo"] = st.number_input("Tu antigüedad en el empleo actual (Años)", min_value=0, max_value=50, value=int(du["antiguedad_trabajo"]), on_change=guardar_automatico)
+    du["antiguedad_empresa"] = st.number_input("Antigüedad de la empresa/pagadora (Años)", min_value=0, max_value=200, value=int(du["antiguedad_empresa"]), on_change=guardar_automatico)
+    
+    du["es_autonomo_empresa"] = st.toggle("💼 ¿Eres Autónomo o Empresa?", value=bool(du["es_autonomo_empresa"]), on_change=guardar_automatico)
+    if du["es_autonomo_empresa"]:
+        du["facturacion_anual"] = st.number_input("Facturación bruta anual (€)", value=int(du["facturacion_anual"]), step=5000, on_change=guardar_automatico)
+
+with st.sidebar.expander("🛡️ Simulador de Entorno Económico", expanded=False):
     du["inflacion_anual"] = st.number_input("Inflación anual estimada (%)", value=float(du["inflacion_anual"]), step=0.1, on_change=guardar_automatico)
     du["anos_proyeccion"] = st.slider("Años a proyectar en el futuro", min_value=5, max_value=40, value=int(du["anos_proyeccion"]), step=1, on_change=guardar_automatico)
     
@@ -131,7 +150,7 @@ num_libertad = gastos_anuales_proyectados * 25
 # DECLARACIÓN DE PESTAÑAS PRINCIPALES
 tab_resumen, tab_presupuesto, tab_inversion, tab_hipoteca, tab_libertad, tab_ia = st.tabs([
     "👑 Cuadro de Mandos", "🥗 Presupuesto Interactivo", "📈 Rentabilidad e Inflación", 
-    "🏠 Consultor Hipotecario", "🕊️ Horizonte Independencia", "🤖 Dictamen IA"
+    "🏠 Consultor Hipotecario", "🕊️ Horizonte Independencia", "🤖 Dictamen e IA Chat"
 ])
 
 # ==========================================
@@ -435,48 +454,89 @@ with tab_libertad:
     st.write(f"Gastos anuales proyectados: **{gastos_anuales_proyectados:,.2f} €**. Con ese objetivo invertido cubres tu nivel de vida.")
 
 # ==========================================
-# 🤖 PESTAÑA 6: AUDITORÍA DE IA (BLINDADA PARA CLOUD Y LATIN-1)
+# 🤖 PESTAÑA 6: AUDITORÍA E IA CHAT (MODERNO E INTERACTIVO)
 # ==========================================
 with tab_ia:
-    st.subheader("🤖 Dictamen e Informe Estratégico de IA", anchor=False)
+    st.subheader("💬 Consultor y Gestor Patrimonial Avanzado en Tiempo Real", anchor=False)
+    
     if not st.session_state.get("api_key_guardada"):
         st.warning("🔒 Introduce tu Gemini API Key en la barra lateral para desbloquear la IA.")
     else:
-        if st.button("🚀 Generar Auditoría Patrimonial Completa"):
+        # Petición de contexto unificada
+        resumen_activos = ""
+        for i in du.get("inversiones", []):
+            resumen_activos += f"- {i['nombre']} ({i['tipo']}): Valor: {i['valor_actual']} EUR. Rentabilidad esperada: {i.get('interes_anual', 0)}%\n"
+
+        perfil_laboral_txt = f"Asalariado (Antigüedad empleo: {du['antiguedad_trabajo']} años, Antigüedad empresa pagadora: {du['antiguedad_empresa']} años)"
+        if du["es_autonomo_empresa"]:
+            perfil_laboral_txt = f"Autónomo/Empresa (Facturación bruta anual: {du['facturacion_anual']} EUR, Antigüedad negocio: {du['antiguedad_empresa']} años)"
+
+        # Macro prompt estructural con el contexto completo inyectado automáticamente
+        contexto_sistema = f"""
+        Eres el mejor agente del mundo en asesoria financiera, estrategia de credito y gestion de patrimonio.
+        Tu objetivo es guiar al usuario con respuestas logicas, hiper-personalizadas y tacticas audaces basadas en sus datos reales actuales:
+        - Datos de Flujos: Ingresos Netos Mensuales {du['ingresos_mensuales']} EUR, Ahorro Declarado Mensual {du['ahorro_mensual_total']} EUR (Tasa de ahorro: {tasa_ahorro:.1f}%), Inyecciones Extras Anuales (Pagas extras/Bonus): {du['dinero_extra_anual']} EUR.
+        - Liquidez Inmediata: {du['capital_inicial']} EUR en Efectivo/Fondo de Emergencia.
+        - Matriz de Inversiones Actuales:\n{resumen_activos}
+        - Balance Consolidado: Patrimonio Neto Total actual de {patrimonio_neto_global:.2f} EUR.
+        - Deuda de Hipoteca: Tipo {du['tipo_hipoteca']}, Debe {du['capital_pendiente']} EUR de un original de {du['capital_original']} EUR al {du['interes_anual_actual']}% de interes (Cuota mensual: {du['cuota_mensual_actual']} EUR).
+        - Entorno Economico: Inflacion del {du['inflacion_anual']}% anual. Proyeccion a {du['anos_proyeccion']} años. Crisis de mercado simulada: {du['activar_crisis']}.
+        - Perfil Crediticio/Laboral: {perfil_laboral_txt}.
+        - Meta Final de Libertad Financiera: {num_libertad:.0f} EUR.
+        
+        INSTRUCCIONES IMPORTANTES:
+        1. Cuando el usuario te pida recomendaciones o distribuciones de capital, propon porcentajes e instrumentos logicos y vigentes en el ecosistema actual (ej. ETFs indexados a MSCI World/S&P 500, Cuentas remuneradas de neobancos top como Trade Republic, Revolut, Bankinter, etc., segun convenga por su perfil crediticio).
+        2. Plantea optimizaciones utilizando especificamente sus pagas extras o bonus (ej: inyectar el bonus de verano/navidad a amortizar deuda o a compounding de ETFs).
+        3. Si el usuario te pregunta por bancos, prestamos con garantia hipotecaria, o refinanciaciones, evalua su perfil laboral (si es autonomo o asalariado con antiguedad) para decirle que entidades financieras tradicionales o fintechs son mas propensas a aprobar su operacion.
+        4. Responde en Markdown de forma muy clara, usando negritas para conceptos clave y listas scannables. NO uses emojis ni simbolos de euro para prevenir errores de codificacion. Usa la palabra 'EUR' en su lugar.
+        """
+
+        # Interfaz de conversación tipo Chat de Streamlit
+        col_chat, col_info = st.columns([4, 1])
+        with col_info:
+            if st.button("🗑️ Limpiar Historial"):
+                st.session_state.historial_chat = []
+                st.rerun()
+        
+        # Mostrar mensajes previos del historial
+        for msg in st.session_state.historial_chat:
+            with st.chat_message(msg["role"]):
+                st.markdown(msg["content"])
+
+        # Caja de entrada de texto
+        if usuario_input := st.chat_input("Pregúntale a tu Gestor Patrimonial... (Ej: ¿Qué harías tú exactamente para optimizar mi ahorro y mis pagas extras?)"):
+            # Mostrar mensaje del usuario de inmediato
+            with st.chat_message("user"):
+                st.markdown(usuario_input)
+            st.session_state.historial_chat.append({"role": "user", "content": usuario_input})
+
+            # Construir conversación completa combinada para Gemini
+            historial_formateado = ""
+            for m in st.session_state.historial_chat:
+                role_label = "Usuario" if m["role"] == "user" else "Asesor"
+                historial_formateado += f"\n{role_label}: {m['content']}\n"
+
+            prompt_completo = f"{contexto_sistema}\n\nHistorial de conversacion hasta ahora:\n{historial_formateado}\nAsesor:"
+
+            # 🛡️ DESINFECCIÓN ANTI-LATIN-1 PREVENCION CLOUD
+            prompt_seguro = prompt_completo.replace("€", "EUR")
+            prompt_seguro = "".join([c for c in prompt_seguro if ord(c) < 256])
+
+            # Llamar al motor de inteligencia artificial de Google
             try:
-                # PARCHE CLOUD: Forzamos la comunicación a través de REST clásico para evitar bloqueos de gRPC en Streamlit
                 genai.configure(api_key=st.session_state.api_key_guardada, transport='rest')
                 model = genai.GenerativeModel('gemini-2.5-flash')
                 
-                resumen_activos = ""
-                for i in du.get("inversiones", []):
-                    resumen_activos += f"- {i['nombre']} ({i['tipo']}): Valor: {i['valor_actual']}. Rentabilidad: {i.get('interes_anual', 0)}%\n"
-
-                prompt = f"""
-                Eres un analista financiero elite. Analiza este informe patrimonial brevemente:
-                - Ingresos: {ingresos_totales:.2f} /mes
-                - Ahorro: {du['ahorro_mensual_total']} /mes ({tasa_ahorro:.1f}%)
-                - Efectivo: {du['capital_inicial']} 
-                - Inversiones:\n{resumen_activos}
-                - Patrimonio Total: {patrimonio_neto_global:.2f} 
-                - Hipoteca: Debe {du['capital_pendiente']} al {du['interes_anual_actual']}%.
-                - Inflacion simulada: {du['inflacion_anual']}%. Crisis activada: {du['activar_crisis']}.
-                
-                Redacta un dictamen conciso de 3 secciones en Markdown elegante:
-                1. Evaluacion del Asset Allocation frente a la inflacion.
-                2. Critica del coste de hipoteca vs inversion.
-                3. Una recomendacion tactica audaz para llegar a la meta de ({num_libertad:.0f}).
-                """
-                
-                # 🛡️ DESINFECCIÓN ESTRICTA LATIN-1: El transporte REST de google-generativeai tiene un bug
-                # en Streamlit Cloud que intenta serializar los textos usando latin-1. 
-                # Reemplazamos los símbolos de Euros y purgamos cualquier emoji oculto.
-                prompt_seguro = prompt.replace("€", "EUR")
-                prompt_seguro = "".join([c for c in prompt_seguro if ord(c) < 256])
-                
-                with st.spinner("La IA está calculando los escenarios económicos..."):
+                with st.spinner("Tu gestor patrimonial de IA está analizando los mercados y tu perfil crediticio..."):
                     response = model.generate_content(prompt_seguro)
-                    st.markdown(response.text)
+                    respuesta_ia = response.text
+                
+                # Mostrar respuesta de la IA
+                with st.chat_message("assistant"):
+                    st.markdown(respuesta_ia)
+                st.session_state.historial_chat.append({"role": "assistant", "content": respuesta_ia})
+                st.rerun()
+
             except Exception as e:
                 st.error(f"Error en el motor analítico de IA: {e}")
 

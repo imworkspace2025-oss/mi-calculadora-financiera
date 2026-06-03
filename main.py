@@ -44,6 +44,7 @@ VALORES_POR_DEFECTO = {
             "precio_compra": 120000.0,
             "gastos_iniciales": 10000.0,
             "alquiler_mensual": 650.0,
+            "gastos_mensuales_inv": 50.0,
             "gastos_anuales": 1200.0,
             "capital_invertido": 5000.0,
             "valor_final": 6500.0
@@ -58,9 +59,13 @@ VALORES_POR_DEFECTO = {
     "amortizacion_extra": 0,
     "inyeccion_capital_unica": 0,
     "antiguedad_trabajo": 3,
-    "antiguedad_empresa": 5,
+    "nombre_empresa": "Inditex S.A.",
     "es_autonomo_empresa": False,
-    "facturacion_anual": 45000
+    "facturacion_anual": 45000,
+    "deudas": [
+        {"nombre": "Financiación Coche", "tipo": "Actual", "cuota_mensual": 210.0, "pendiente": 6400.0, "horizonte": "Inmediato"},
+        {"nombre": "Reforma Cocina", "tipo": "Próxima", "cuota_mensual": 150.0, "pendiente": 4500.0, "horizonte": "En 6 meses"}
+    ]
 }
 
 # Crear estados iniciales si no existen
@@ -82,16 +87,17 @@ if "db" in st.query_params:
     except:
         pass
 
-# Blindaje anti-keyerror
+# Blindaje anti-keyerror y actualización de estructuras viejas
 for clave, valor in VALORES_POR_DEFECTO.items():
     if clave not in st.session_state.datos_usuario:
         st.session_state.datos_usuario[clave] = valor
 
 du = st.session_state.datos_usuario
 
+# Asegurar que los activos inmobiliarios tengan la nueva variable de gastos mensuales
 for item in du.get("inversiones", []):
-    if item.get("tipo") == "ROI Simple":
-        item["tipo"] = "Activos Estáticos / Otros"
+    if "gastos_mensuales_inv" not in item:
+        item["gastos_mensuales_inv"] = 0.0
 
 def guardar_automatico():
     st.query_params["db"] = json.dumps(st.session_state.datos_usuario)
@@ -108,7 +114,7 @@ with st.sidebar.expander("🔑 Inteligencia Artificial (Gemini)", expanded=not b
     if not st.session_state.api_key_guardada:
         clave_introducida = st.text_input("Introduce tu API Key y pulsa Intro:", type="password")
         if clave_introducida:
-            st.session_state.api_key_guardada = clave_introducida
+            st.session_state.api_key_guardada = clave_introduced
             st.rerun()
     else:
         st.success("✅ API Key vinculada y activa")
@@ -122,11 +128,11 @@ with st.sidebar.expander("📥 Tus Flujos de Caja", expanded=True):
     du["ingresos_mensuales"] = st.number_input("Ingresos netos al mes (€)", value=int(du["ingresos_mensuales"]), step=100, on_change=guardar_automatico)
     du["dinero_extra_anual"] = st.number_input("Pagas/Bonus extras al año (€)", value=int(du["dinero_extra_anual"]), step=500, on_change=guardar_automatico)
     du["ahorro_mensual_total"] = st.number_input("Tu ahorro real al mes (€)", value=int(du["ahorro_mensual_total"]), step=50, on_change=guardar_automatico)
-    du["capital_inicial"] = st.number_input("Efectivo / Fondo Emergencia (€)", value=int(du["capital_inicial"]), step=500, on_change=guardar_automatico)
+    du["capital_inicial"] = st.number_input("Efectivo / Liquidez Total (€)", value=int(du["capital_inicial"]), step=500, on_change=guardar_automatico)
 
 with st.sidebar.expander("💳 Perfil Crediticio y Laboral", expanded=True):
-    du["antiguedad_trabajo"] = st.number_input("Tu antigüedad en el empleo actual (Años)", min_value=0, max_value=50, value=int(du["antiguedad_trabajo"]), on_change=guardar_automatico)
-    du["antiguedad_empresa"] = st.number_input("Antigüedad de la empresa/pagadora (Años)", min_value=0, max_value=200, value=int(du["antiguedad_empresa"]), on_change=guardar_automatico)
+    du["nombre_empresa"] = st.text_input("Nombre de la empresa / pagador:", value=str(du["nombre_empresa"]), on_change=guardar_automatico)
+    du["antiguedad_trabajo"] = st.number_input("Tu antigüedad en este empleo (Años)", min_value=0, max_value=50, value=int(du["antiguedad_trabajo"]), on_change=guardar_automatico)
     
     du["es_autonomo_empresa"] = st.toggle("💼 ¿Eres Autónomo o Empresa?", value=bool(du["es_autonomo_empresa"]), on_change=guardar_automatico)
     if du["es_autonomo_empresa"]:
@@ -137,16 +143,19 @@ with st.sidebar.expander("🛡️ Simulador de Entorno Económico", expanded=Fal
     du["anos_proyeccion"] = st.slider("Años a proyectar en el futuro", min_value=5, max_value=40, value=int(du["anos_proyeccion"]), step=1, on_change=guardar_automatico)
     du["activar_crisis"] = st.toggle("💥 Activar 'Test de Estrés'", value=bool(du["activar_crisis"]), on_change=guardar_automatico)
 
-# Cálculos transversales
+# Cálculos transversales básicos
 ingreso_extra_prorrateado = du["dinero_extra_anual"] / 12
 ingresos_totales = du["ingresos_mensuales"] + ingreso_extra_prorrateado
-gastos_mensuales = ingresos_totales - du["ahorro_mensual_total"]
-gastos_anuales_proyectados = gastos_mensuales * 12
-num_libertad = gastos_anuales_proyectados * 25
+gastos_mensuales_vivos = ingresos_totales - du["ahorro_mensual_total"]
+num_libertad = (gastos_mensuales_vivos * 12) * 25
 
-# Pestañas principales
+# Sumas dinámicas de deudas extras introducidas por el usuario
+total_cuotas_deudas_extra = sum(float(d["cuota_mensual"]) for d in du["deudas"] if d["tipo"] == "Actual")
+total_pendiente_deudas_extra = sum(float(d["pendiente"]) for d in du["deudas"] if d["tipo"] == "Actual")
+
+# Pestañas principales actualizadas
 tab_resumen, tab_presupuesto, tab_inversion, tab_hipoteca, tab_libertad, tab_ia = st.tabs([
-    "👑 Cuadro de Mandos", "🥗 Presupuesto Interactivo", "📈 Rentabilidad e Inflación", 
+    "👑 Cuadro de Mandos", "🥗 Presupuesto y Deudas", "📈 Rentabilidad e Inversión", 
     "🏠 Consultor Hipotecario", "🕊️ Horizonte Independencia", "🤖 Dictamen e IA Chat"
 ])
 
@@ -169,8 +178,8 @@ with tab_inversion:
             "nombre": f"Nuevo Activo {len(du['inversiones']) + 1}",
             "tipo": "Interés Compuesto (ETFs / Fondos)",
             "valor_actual": 0.0, "aportacion_mensual": 0.0, "interes_anual": 7.0,
-            "precio_compra": 100000.0, "gastos_iniciales": 10000.0, "alquiler_mensual": 500.0, "gastos_anuales": 1000.0,
-            "capital_invertido": 5000.0, "valor_final": 5000.0
+            "precio_compra": 100000.0, "gastos_iniciales": 10000.0, "alquiler_mensual": 500.0, 
+            "gastos_mensuales_inv": 40.0, "gastos_anuales": 600.0, "capital_invertido": 5000.0, "valor_final": 5000.0
         })
         guardar_automatico()
         st.rerun()
@@ -206,15 +215,17 @@ with tab_inversion:
                     proyeccion_real.append(acumulado_real)
 
             elif inv["tipo"] == "Rentabilidad Inmobiliaria (Ladrillo)":
-                c1, c2, c3, c4 = st.columns(4)
+                c1, c2, c3, c4, c5 = st.columns(5)
                 with c1: inv["precio_compra"] = st.number_input("Precio compra (€)", value=float(inv["precio_compra"]), key=f"l1_{idx}", on_change=guardar_automatico)
-                with c2: inv["gastos_iniciales"] = st.number_input("Gastos e Impuestos (€)", value=float(inv["gastos_iniciales"]), key=f"l2_{idx}", on_change=guardar_automatico)
-                with c3: inv["alquiler_mensual"] = st.number_input("Renta mensual líquida (€)", value=float(inv["alquiler_mensual"]), key=f"l3_{idx}", on_change=guardar_automatico)
-                with c4: inv["gastos_anuales"] = st.number_input("Gastos explotación/año (€)", value=float(inv["gastos_anuales"]), key=f"l4_{idx}", on_change=guardar_automatico)
+                with c2: inv["gastos_iniciales"] = st.number_input("Gastos/Impuestos iniciales (€)", value=float(inv["gastos_iniciales"]), key=f"l2_{idx}", on_change=guardar_automatico)
+                with c3: inv["alquiler_mensual"] = st.number_input("Renta mensual (€)", value=float(inv["alquiler_mensual"]), key=f"l3_{idx}", on_change=guardar_automatico)
+                with c4: inv["gastos_mensuales_inv"] = st.number_input("Gastos fijos al MES (€)", value=float(inv["gastos_mensuales_inv"]), key=f"l5_{idx}", help="Comunidad, gestores, etc.", on_change=guardar_automatico)
+                with c5: inv["gastos_anuales"] = st.number_input("Gastos fijos al AÑO (€)", value=float(inv["gastos_anuales"]), key=f"l4_{idx}", help="IBI, Seguro de hogar, etc.", on_change=guardar_automatico)
 
                 inv["valor_actual"] = inv["precio_compra"] + inv["gastos_iniciales"]
                 patrimonio_inversiones_total += inv["valor_actual"]
-                flujo_neto = (inv["alquiler_mensual"] * 12) - inv["gastos_anuales"]
+                # Descuento combinado: mensual prorrateado + anual directo
+                flujo_neto = (inv["alquiler_mensual"] * 12) - (inv["gastos_mensuales_inv"] * 12) - inv["gastos_anuales"]
                 acumulado_nom, acumulado_real = inv["valor_actual"], inv["valor_actual"]
                 for ano in cronologia_anos:
                     acumulado_nom += flujo_neto
@@ -241,7 +252,7 @@ with tab_inversion:
 # 🏠 MOTOR DE LA HIPOTECA
 # ==========================================
 with tab_hipoteca:
-    st.subheader("🏠 Análisis Técnico y Estratégico de Deuda Bancaria", anchor=False)
+    st.subheader("🏠 Análisis Técnico de Deuda Hipotecaria", anchor=False)
     col1, col2, col3, col4 = st.columns(4)
     with col1: du["tipo_hipoteca"] = st.selectbox("Tipo de interés:", ["Fija", "Variable", "Mixta"], index=["Fija", "Variable", "Mixta"].index(du["tipo_hipoteca"]), on_change=guardar_automatico)
     with col2: du["capital_original"] = st.number_input("Capital original (€)", value=int(du["capital_original"]), on_change=guardar_automatico)
@@ -259,7 +270,6 @@ with tab_hipoteca:
     cuota_financiera_verdadera = du["cuota_mensual_actual"] + coste_mensual_seguros
 
     if du["cuota_mensual_actual"] > (du["capital_pendiente"] * tasa_mensual):
-        interes_mes_actual = du["capital_pendiente"] * tasa_mensual
         meses_contrato = -math.log(1 - (du["capital_pendiente"] * tasa_mensual) / du["cuota_mensual_actual"]) / math.log(1 + tasa_mensual)
         anos_contrato_restantes = meses_contrato / 12
         intereses_totales_banco = (du["cuota_mensual_actual"] * meses_contrato) - du["capital_pendiente"]
@@ -275,8 +285,8 @@ with tab_resumen:
     with c_kpi1:
         with st.container(border=True):
             st.markdown("<p style='color:#777; margin:0;'>PATRIMONIO NETO ACTUAL</p>", unsafe_allow_html=True)
-            st.markdown(f"## {patrimonio_neto_global:,.2f} €")
-            st.caption(f"Líquido: {du['capital_inicial']:,} € | Activos: {patrimonio_inversiones_total:,.2f} €")
+            st.markdown(f"## {patrimonio_neto_global - du['capital_pendiente'] - total_pendiente_deudas_extra:,.2f} €")
+            st.caption(f"Líquido: {du['capital_inicial']:,} € | Activos Vinculados: {patrimonio_inversiones_total:,.2f} €")
     with c_kpi2:
         with st.container(border=True):
             st.markdown("<p style='color:#777; margin:0;'>TASA DE AHORRO MENSUAL</p>", unsafe_allow_html=True)
@@ -285,16 +295,17 @@ with tab_resumen:
             st.caption(f"Ahorras {du['ahorro_mensual_total']} € de {ingresos_totales:,.0f} € netos.")
     with c_kpi3:
         with st.container(border=True):
-            st.markdown("<p style='color:#777; margin:0;'>SALUD DE LA HIPOTECA</p>", unsafe_allow_html=True)
-            st.markdown(f"## {anos_contrato_restantes:.1f} años")
-            st.caption(f"Pendiente: {du['capital_pendiente']:,} €")
+            st.markdown("<p style='color:#777; margin:0;'>PASIVOS RECONOCIDOS</p>", unsafe_allow_html=True)
+            deuda_consolidada = du["capital_pendiente"] + total_pendiente_deudas_extra
+            st.markdown(f"## {deuda_consolidada:,.0f} €")
+            st.caption(f"Hipotecaria: {du['capital_pendiente']:,} € | Consumo/Otras: {total_pendiente_deudas_extra:,.0f} €")
 
     st.markdown("<br>", unsafe_allow_html=True)
     col_dash1, col_dash2 = st.columns([2, 3])
     with col_dash1:
         with st.container(border=True):
             df_pie = pd.DataFrame({"Activo": list(dict_distribucion_activos.keys()), "Valor (€)": list(dict_distribucion_activos.values())})
-            fig_pie = px.pie(df_pie, values="Valor (€)", names="Activo", hole=0.4, title="Asset Allocation")
+            fig_pie = px.pie(df_pie, values="Valor (€)", names="Activo", hole=0.4, title="Asset Allocation Actual")
             fig_pie.update_layout(height=250, margin=dict(t=30, b=10, l=10, r=10))
             st.plotly_chart(fig_pie, use_container_width=True)
     with col_dash2:
@@ -302,16 +313,73 @@ with tab_resumen:
             st.markdown("#### 🎯 Meta Independencia Financiera")
             porcentaje_meta = (patrimonio_neto_global / num_libertad) * 100 if num_libertad > 0 else 0
             st.progress(min(porcentaje_meta / 100, 1.0))
-            st.info(f"Objetivo: **{num_libertad:,.0f} €** (Regla del 4% sobre gastos). Llevas el **{porcentaje_meta:.1f}%**.")
+            st.info(f"Objetivo: **{num_libertad:,.0f} €** (Regla del 4%). Llevas completado el **{porcentaje_meta:.1f}%**.")
 
 # ==========================================
-# 🥗 PESTAÑA 2 Y 3 (PRESUPUESTO Y GRÁFICAS)
+# 🥗 PESTAÑA 2: PRESUPUESTO, DEUDAS Y FONDO AUTOCALCULABLE
 # ==========================================
 with tab_presupuesto:
-    st.subheader("🥗 Optimización Presupuestaria (Regla 50/30/20)", anchor=False)
-    nec, cap, aho_rec = ingresos_totales * 0.5, ingresos_totales * 0.3, ingresos_totales * 0.2
-    st.write(f"Necesidades básicas: {nec:,.0f} EUR/mes | Caprichos: {cap:,.0f} EUR/mes | Ahorro Objetivo: {aho_rec:,.0f} EUR/mes")
+    st.subheader("🥗 Optimización y Control de Riesgos Patrimoniales", anchor=False)
+    
+    # 🚨 Submódulo: FONDO DE EMERGENCIA AUTOMÁTICO
+    st.markdown("### 🛡️ Escudo de Contingencias (Fondo de Emergencia)")
+    
+    # Cálculo real de los gastos mensuales que hay que cubrir ante imprevistos
+    gastos_mensuales_totales = du["cuota_mensual_actual"] + total_cuotas_deudas_extra + gastos_mensuales_vivos
+    meses_cobertura = du["capital_inicial"] / gastos_mensuales_totales if gastos_mensuales_totales > 0 else 0
+    
+    col_f1, col_f2, col_f3 = st.columns(3)
+    with col_f1:
+        st.metric("Tus Gastos Mensuales Reales", f"{gastos_mensuales_totales:,.2f} €", help="Incluye costes de vida, hipoteca y cuotas de tus deudas activas.")
+    with col_f2:
+        st.metric("Meses de Cobertura de tu Liquidez", f"{meses_cobertura:.1f} meses")
+    with col_f3:
+        # Lógica de diagnóstico automático de seguridad
+        if meses_cobertura < 3:
+            st.error("🚨 Alerta: Fondo Insuficiente. Estás expuesto ante imprevistos graves.")
+            estado_seguridad = "Bajo Mínimos"
+        elif 3 <= meses_cobertura <= 6:
+            st.warning("⚠️ Rango Estándar: Tienes colchón, pero ajustado para crisis medianas.")
+            estado_seguridad = "Saludable / Estándar"
+        else:
+            st.success("✅ Rango Óptimo: Nivel máximo de seguridad patrimonial.")
+            estado_seguridad = "Excelente"
 
+    st.markdown("---")
+    
+    # 💳 Submódulo: CONTROL AVANZADO DE DEUDAS (ACTUALES Y PRÓXIMAS)
+    st.markdown("### 💳 Matriz de Pasivos (Deudas Actuales y Próximas)")
+    st.write("Registra tus deudas de consumo, vehículos o próximos desembolsos planificados para que la IA los pondere.")
+    
+    if st.button("➕ Añadir Nueva Deuda / Próximo Gasto"):
+        du["deudas"].append({"nombre": "Nueva Deuda", "tipo": "Actual", "cuota_mensual": 100.0, "pendiente": 2000.0, "horizonte": "Inmediato"})
+        guardar_automatico()
+        st.rerun()
+        
+    for d_idx, deuda in enumerate(du.get("deudas", [])):
+        with st.container(border=True):
+            col_d1, col_d2, col_d3, col_d4, col_d5 = st.columns([2, 2, 2, 2, 1])
+            with col_d1:
+                deuda["nombre"] = st.text_input("Concepto / Deuda:", value=deuda["nombre"], key=f"d_name_{d_idx}", on_change=guardar_automatico)
+            with col_d2:
+                deuda["tipo"] = st.selectbox("Estado temporal:", ["Actual", "Próxima"], index=["Actual", "Próxima"].index(deuda["tipo"]), key=f"d_tipo_{d_idx}", on_change=guardar_automatico)
+            with col_d3:
+                deuda["cuota_mensual"] = st.number_input("Cuota estimada al mes (€):", value=float(deuda["cuota_mensual"]), key=f"d_cuota_{d_idx}", on_change=guardar_automatico)
+            with col_d4:
+                if deuda["tipo"] == "Actual":
+                    deuda["pendiente"] = st.number_input("Capital Pendiente (€):", value=float(deuda["pendiente"]), key=f"d_pend_{d_idx}", on_change=guardar_automatico)
+                    deuda["horizonte"] = "Inmediato"
+                else:
+                    deuda["horizonte"] = st.selectbox("Llegada estimada:", ["En 3 meses", "En 6 meses", "En 12 meses", "Más de 1 año"], index=["En 3 meses", "En 6 meses", "En 12 meses", "Más de 1 año"].index(deuda["horizonte"] if deuda["horizonte"] in ["En 3 meses", "En 6 meses", "En 12 meses", "Más de 1 año"] else "En 3 meses"), key=f"d_horiz_{d_idx}", on_change=guardar_automatico)
+                    deuda["pendiente"] = st.number_input("Gasto total estimado (€):", value=float(deuda["pendiente"]), key=f"d_pend_{d_idx}", on_change=guardar_automatico)
+            with col_d5:
+                st.markdown("<br>", unsafe_allow_html=True)
+                if st.button("❌", key=f"d_del_{d_idx}"):
+                    du["deudas"].pop(d_idx)
+                    guardar_automatico()
+                    st.rerun()
+
+# Resto de visualizaciones en pestañas
 with tab_inversion:
     st.markdown("---")
     if len(du.get("inversiones", [])) > 0:
@@ -320,16 +388,68 @@ with tab_inversion:
         df_prep_real = pd.DataFrame(datos_grafica_real).set_index("Año")
         df_total_real = pd.DataFrame({"Valor Real Corregido": df_prep_real.sum(axis=1)})
         df_melted = df_total_nom.join(df_total_real).reset_index().melt(id_vars=["Año"], var_name="Métrica", value_name="Capital (€)")
-        fig_lineas = px.line(df_melted, x="Año", y="Capital (€)", color="Métrica", title="Evolución del Patrimonio")
+        fig_lineas = px.line(df_melted, x="Año", y="Capital (€)", color="Métrica", title="Evolución del Patrimonio Bajo Inflación")
         st.plotly_chart(fig_lineas, use_container_width=True)
-
-with tab_hipoteca:
-    st.markdown("---")
-    st.write("Análisis de rentabilidad de arbitraje activo entre coste de deuda e inversiones.")
 
 with tab_libertad:
     st.subheader("🕊️ Tu Meta de Libertad Financiera (Regla del 4%)", anchor=False)
     st.error(f"## 🎯 TU NÚMERO OBJETIVO: {num_libertad:,.2f} €")
+
+# ==========================================
+# 📥 EXTRACCIÓN DE DOSSIER PATRIMONIAL BANCARIO
+# ==========================================
+# Generar strings limpios de los pasivos y activos para el informe
+txt_activos = "".join([f"- {i['nombre']} ({i['tipo']}): {i['valor_actual']} EUR\n" for i in du["inversiones"]])
+txt_deudas = "".join([f"- {d['nombre']} ({d['tipo']}): Total: {d['pendiente']} EUR | Cuota: {d['cuota_mensual']} EUR/mes (Horizonte: {d['horizonte']})\n" for i in du["deudas"]])
+
+dossier_bancario_md = f"""# REPORTING ESTRATÉGICO PATRIMONIAL
+Generado para Entidades de Crédito y Gestión de Activos
+
+## 1. RESUMEN EJECUTIVO DEL PERFIL
+- Entidad Laboral Activa: {du['nombre_empresa']} (Antigüedad individual: {du['antiguedad_trabajo']} años)
+- Ingresos Líquidos Mensuales: {du['ingresos_mensuales']} EUR
+- Capacidad de Ahorro Demostrada: {du['ahorro_mensual_total']} EUR/mes (Tasa de ahorro: {tasa_ahorro:.1f}%)
+- Colchón de Contingencia: {du['capital_inicial']} EUR ({meses_cobertura:.1f} meses de cobertura total. Estatus: {estado_seguridad})
+
+## 2. DESGLOSE DE ACTIVOS CONSOLIDADOS
+{txt_activos if txt_activos else "- Sin activos adicionales declarados."}
+
+## 3. PASIVOS Y CALIFICACIÓN DE DEUDA
+- Hipoteca Pendiente: {du['capital_pendiente']} EUR (Cuota: {du['cuota_mensual_actual']} EUR/mes al {du['interes_anual_actual']}%)
+- Deudas Consolidadas Adicionales y Compromisos Próximos:
+{txt_deudas if txt_deudas else "- Sin otras deudas vigentes."}
+
+## 4. ANÁLISIS DE PROS Y CONTRAS DEL PERFIL
+### PROS:
+- Tasa de ahorro recurrente alta ({tasa_ahorro:.1f}%), garantizando liquidez para amortizaciones o nuevos proyectos.
+- Colchón de emergencia robusto que mitiga riesgos de impago a corto plazo.
+- Perfil profesional asentado en {du['nombre_empresa']}.
+
+### CONTRAS / PUNTOS DE VIGILANCIA:
+- Impacto de la inflación simulada al {du['inflacion_anual']}% sobre el capital no invertido.
+- Compromisos futuros indexados que podrían alterar los ratios de endeudamiento mensuales.
+
+## 5. ESTRATEGIA DE CRECIMIENTO RECOMENDADA
+Optimizar el arbitraje de deuda maximizando las aportaciones recurrentes a activos indexados que superen con holgura el coste financiero de los pasivos vigentes.
+"""
+
+with st.sidebar.expander("📥 Exportar Dossier Financiero Pro", expanded=False):
+    st.write("Descarga un completo informe corporativo ideal para presentar en bancos o analizar tu salud financiera fuera de la app.")
+    formato = st.selectbox("Elige el formato de salida:", ["Dossier Técnico (.md / .txt)", "Proyecto Ejecutivo (.pdf / Imprimible)"])
+    
+    if formato == "Dossier Técnico (.md / .txt)":
+        st.download_button(
+            label="💾 Descargar Dossier Ejecutivo",
+            data=dossier_bancario_md,
+            file_name="Dossier_Patrimonial_Bancario.md",
+            mime="text/markdown",
+            use_container_width=True
+        )
+    else:
+        st.info("💡 Para exportarlo en PDF limpio, pulsa el botón de abajo para visualizar el dossier adaptado y utiliza la opción 'Imprimir -> Guardar como PDF' de tu navegador.")
+        if st.button("👁️ Previsualizar para Imprimir PDF", use_container_width=True):
+            st.toast("Dossier listo al final de la barra lateral")
+            st.sidebar.text_area("Copia o Imprime este texto:", value=dossier_bancario_md, height=300)
 
 # ==========================================
 # 🤖 PESTAÑA 6: AUDITORÍA + IA CHAT (ESTILO CONSOLA NATIVA)
@@ -340,43 +460,33 @@ with tab_ia:
     if not st.session_state.get("api_key_guardada"):
         st.warning("🔒 Introduce tu Gemini API Key en la barra lateral para desbloquear la IA.")
     else:
-        # Inyección automática de todo el escenario financiero actualizado
-        resumen_activos = ""
-        for i in du.get("inversiones", []):
-            resumen_activos += f"- {i['nombre']} ({i['tipo']}): Valor: {i['valor_actual']} EUR. Rentabilidad: {i.get('interes_anual', 0)}%\n"
-
-        perfil_laboral_txt = f"Asalariado (Antigüedad: {du['antiguedad_trabajo']} años, Antigüedad empresa: {du['antiguedad_empresa']} años)"
-        if du["es_autonomo_empresa"]:
-            perfil_laboral_txt = f"Autónomo/Empresa (Facturación: {du['facturacion_anual']} EUR, Negocio: {du['antiguedad_empresa']} años)"
-
+        # Inyección automática enriquecida con los nuevos campos de deudas y fondo de emergencia
         contexto_sistema = f"""
-        Eres el mejor agente del mundo en asesoria financiera y gestion de patrimonio. Tu mision es orientar al usuario de forma analitica, logica y tactica basandote en su perfil financiero:
-        - Flujos: Ingresos Netos {du['ingresos_mensuales']} EUR/mes, Ahorro {du['ahorro_mensual_total']} EUR/mes (Tasa: {tasa_ahorro:.1f}%), Pagas Extra Anuales: {du['dinero_extra_anual']} EUR.
-        - Liquidez: {du['capital_inicial']} EUR en Efectivo.
-        - Activos actuales:\n{resumen_activos}
-        - Deuda Hipotecaria: Debe {du['capital_pendiente']} EUR (Original: {du['capital_original']} EUR) al {du['interes_anual_actual']}% (Cuota: {du['cuota_mensual_actual']} EUR/mes).
-        - Perfil Crediticio/Laboral: {perfil_laboral_txt}.
-        - Meta: {num_libertad:.0f} EUR.
+        Eres el mejor agente del mundo en asesoria financiera y gestion de patrimonio. Tu mision es orientar al usuario de forma analitica basandote en su perfil:
+        - Flujos: Ingresos {du['ingresos_mensuales']} EUR/mes, Ahorro {du['ahorro_mensual_total']} EUR/mes (Tasa: {tasa_ahorro:.1f}%), Pagas Extras: {du['dinero_extra_anual']} EUR/año.
+        - Liquidez y Emergencias: Colchon de {du['capital_inicial']} EUR que cubre {meses_cobertura:.1f} meses de vida (Calificacion: {estado_seguridad}).
+        - Activos actuales:\n{txt_activos}
+        - Deudas y Pasivos:\n- Hipoteca: Debe {du['capital_pendiente']} EUR al {du['interes_anual_actual']}%.\n{txt_deudas}
+        - Perfil Laboral: Empleado en {du['nombre_empresa']} con {du['antiguedad_trabajo']} años de antiguedad.
+        - Objetivo Financiero: {num_libertad:.0f} EUR.
         
         REGLAS DE CONVERSACIÓN:
-        1. Propon distribuciones porcentuales concretas y logicas utilizando instrumentos reales y vigentes (ETFs globales como MSCI World, S&P 500, cuentas de alta remuneracion tipo Trade Republic, Revolut o neobancos).
-        2. Diseña estrategias explicitas para las pagas extras/bonus anuales que menciona el usuario.
-        3. Evalua su perfil laboral ante solicitudes de refinanciaciones o prestamos con garantia hipotecaria.
-        4. Escribe siempre en Markdown profesional sin usar emojis ni simbolos de euro (usa la palabra 'EUR') para evitar roturas del codec 'latin-1' en la nube.
+        1. Propon distribuciones en ETFs globales (MSCI World, S&P 500) o cuentas de alta remuneracion.
+        2. Analiza especificamente el impacto de sus deudas actuales y proximas sobre su capacidad de inversion.
+        3. Evalua su nivel de seguridad basandote en sus meses reales del Fondo de Emergencia.
+        4. Escribe en Markdown profesional sin usar emojis ni simbolos de euro (usa la palabra 'EUR') para evitar roturas de codificacion.
         """
 
-        # ----------------------------------------------------
-        # BLOQUE 1 (ARRIBA): Botón y despliegue de Auditoría Estática
-        # ----------------------------------------------------
         col_btn, col_reset = st.columns([3, 1])
         with col_btn:
             if st.button("🚀 Generar Auditoría Patrimonial Completa", use_container_width=True):
                 prompt_auditoria = f"""
                 {contexto_sistema}
-                Redacta un dictamen financiero macroeconomico inicial estructurado en 3 secciones claras:
-                1. Evaluacion del Asset Allocation actual frente a la inflacion.
-                2. Critica del coste de hipoteca vs rendimiento de inversiones.
-                3. Una recomendacion tactica audaz para llegar a la meta de {num_libertad:.0f} EUR de forma acelerada.
+                Redacta un dictamen financiero macroeconomico inicial estructurado en 4 secciones claras:
+                1. Analisis del Fondo de Emergencia actual frente a su matriz de deudas (actuales y proximas).
+                2. Evaluacion del Asset Allocation frente a la inflacion de {du['inflacion_anual']}%.
+                3. Critica de la salud financiera global ante el sector bancario (Score de credito segun su empresa y antiguedad).
+                4. Recomendacion tactica personalizada para acelerar la meta de {num_libertad:.0f} EUR.
                 """
                 prompt_seguro = prompt_auditoria.replace("€", "EUR")
                 prompt_seguro = "".join([c for c in prompt_seguro if ord(c) < 256])
@@ -396,57 +506,44 @@ with tab_ia:
                 st.session_state.auditoria_estatica = ""
                 st.rerun()
 
-        # Si ya existe la auditoría generada, se dibuja fija arriba
         if st.session_state.auditoria_estatica:
             st.markdown("<br>", unsafe_allow_html=True)
             with st.container(border=True):
                 st.markdown("### 📋 Dictamen Financiero Estratégico Inicial")
                 st.markdown(st.session_state.auditoria_estatica)
 
-        # ----------------------------------------------------
-        # BLOQUE 2 (ABAJO): Chat conversacional continuo sobre la auditoría
-        # ----------------------------------------------------
         st.markdown("---")
         st.markdown("#### 💬 Copiloto de Consultas Tácticas en Tiempo Real")
-        st.caption("Pregúntale lo que quieras sobre el dictamen anterior, alternativas de neobancos, fondos o refinanciación.")
+        st.caption("Pregúntale lo que quieras sobre el dictamen, alternativas de inversión, refinanciación o cómo afrontar las deudas próximas.")
 
-        # Imprimir los mensajes cruzados del historial del chat
         for msg in st.session_state.historial_chat:
             with st.chat_message(msg["role"]):
                 st.markdown(msg["content"])
 
-        # Caja de entrada de mensajes fija al fondo de la pantalla
-        if usuario_input := st.chat_input("Pregúntale a tu Asesor Patrimonial... (Ej: ¿Qué harías exactamente con mis pagas extras en verano?)"):
-            # Mostrar la duda del usuario de inmediato en pantalla
+        if usuario_input := st.chat_input("Pregúntale a tu Asesor Patrimonial..."):
             with st.chat_message("user"):
                 st.markdown(usuario_input)
             st.session_state.historial_chat.append({"role": "user", "content": usuario_input})
 
-            # Montar todo el árbol conversacional (Contexto global + Auditoría de base + Historial acumulado)
             historial_formateado = f"Auditoria Patrimonial Base:\n{st.session_state.auditoria_estatica}\n\n"
             for m in st.session_state.historial_chat:
                 role_label = "Usuario" if m["role"] == "user" else "Asesor"
                 historial_formateado += f"\n{role_label}: {m['content']}\n"
 
-            prompt_completo = f"{contexto_sistema}\n\nHistorial de la reunion:\n{historial_formateado}\nAsesor:"
-            
-            # Limpieza contra fallos de latin-1
-            prompt_seguro = prompt_completo.replace("€", "EUR")
-            prompt_seguro = "".join([c for c in prompt_seguro if ord(c) < 256])
+            prompt_completo = f"{contexto_sistema}\n\nHistorial:\n{historial_formateado}\nAsesor:"
+            prompt_seguro = prompt_completo.replace("€", "EUR").encode("latin-1", "ignore").decode("latin-1")
 
             try:
                 genai.configure(api_key=st.session_state.api_key_guardada, transport='rest')
                 model = genai.GenerativeModel('gemini-2.5-flash')
-                
-                with st.spinner("Analizando tu perfil financiero..."):
+                with st.spinner("Analizando impactos..."):
                     response = model.generate_content(prompt_seguro)
                     respuesta_ia = response.text
                 
                 st.session_state.historial_chat.append({"role": "assistant", "content": respuesta_ia})
                 st.rerun()
-
             except Exception as e:
-                st.error(f"Error en la respuesta del asesor: {e}")
+                st.error(f"Error en el chat: {e}")
 
 # Indicador visual de estado de persistencia
 st.sidebar.markdown("---")

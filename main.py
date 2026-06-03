@@ -20,7 +20,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-st.title("📊 BIENVENIDO A TU TERMINAL PATRIMONIAL TOP")
+st.title("📊 BIENVENIDO A TU TERMINAL PATRIMONIAL TOP", anchor=False)
 st.write("Tu suite financiera avanzada y automatizada. Los cambios se guardan al instante en la memoria local de tu navegador.")
 
 # ==========================================
@@ -79,6 +79,11 @@ if "db" in st.query_params:
 
 du = st.session_state.datos_usuario
 
+# Migración automática si el usuario tenía el texto antiguo "ROI Simple" guardado
+for item in du.get("inversiones", []):
+    if item.get("tipo") == "ROI Simple":
+        item["tipo"] = "Activos Estáticos / Otros"
+
 def guardar_automatico():
     st.query_params["db"] = json.dumps(st.session_state.datos_usuario)
 
@@ -100,7 +105,6 @@ with st.sidebar.expander("🛡️ Simulador de Entorno Económico", expanded=Tru
     du["inflacion_anual"] = st.number_input("Inflación anual estimada (%)", value=float(du["inflacion_anual"]), step=0.1, on_change=guardar_automatico, help="El ritmo estimado al que suben los precios de la vida. Reduce tu poder adquisitivo real en las gráficas a futuro.")
     du["anos_proyeccion"] = st.slider("Años a proyectar en el futuro", min_value=5, max_value=40, value=int(du["anos_proyeccion"]), step=1, on_change=guardar_automatico, help="Línea temporal en años para evaluar el impacto del interés compuesto en tu patrimonio.")
     
-    # CAMBIO SOLICITADO: TOOLTIP DETALLADO PARA EL TEST DE ESTRÉS
     du["activar_crisis"] = st.toggle(
         "💥 Activar 'Test de Estrés' (Crisis de mercado)", 
         value=bool(du["activar_crisis"]), 
@@ -137,7 +141,7 @@ for item in du.get("inversiones", []):
     dict_distribucion_activos[item["nombre"]] = item["valor_actual"]
 
 with tab_inversion:
-    st.subheader("💼 Matriz Patrimonial y Asignación de Activos")
+    st.subheader("💼 Matriz Patrimonial y Asignación de Activos", anchor=False)
     
     if st.button("➕ Vincular Nuevo Activo/Inversión"):
         du["inversiones"].append({
@@ -156,12 +160,13 @@ with tab_inversion:
             with col_c1:
                 inv["nombre"] = st.text_input("Identificador del Activo:", value=inv["nombre"], key=f"inv_name_{idx}", on_change=guardar_automatico)
             with col_c2:
+                # CAMBIO SOLICITADO: REPLANTEADO "ROI SIMPLE" A "ACTIVOS ESTÁTICOS / OTROS" CON SU TOOLTIP
                 inv["tipo"] = st.selectbox(
                     "Naturaleza del activo:", 
-                    ["Interés Compuesto (ETFs / Fondos)", "Rentabilidad Inmobiliaria (Ladrillo)", "ROI Simple"],
-                    index=["Interés Compuesto (ETFs / Fondos)", "Rentabilidad Inmobiliaria (Ladrillo)", "ROI Simple"].index(inv["tipo"]),
+                    ["Interés Compuesto (ETFs / Fondos)", "Rentabilidad Inmobiliaria (Ladrillo)", "Activos Estáticos / Otros"],
+                    index=["Interés Compuesto (ETFs / Fondos)", "Rentabilidad Inmobiliaria (Ladrillo)", "Activos Estáticos / Otros"].index(inv["tipo"] if inv["tipo"] in ["Interés Compuesto (ETFs / Fondos)", "Rentabilidad Inmobiliaria (Ladrillo)", "Activos Estáticos / Otros"] else "Activos Estáticos / Otros"),
                     key=f"inv_tipo_{idx}", on_change=guardar_automatico,
-                    help="Elige el modelo matemático que rige este activo para calcular correctamente sus proyecciones futuras."
+                    help="Elige el modelo matemático del activo. 'Activos Estáticos / Otros' sirve para bienes que no rinden intereses mensuales automáticos (oro, coleccionables, cripto estático o préstamos particulares) donde solo mides su valor actual frente a la inflación."
                 )
             with col_c3:
                 st.markdown("<br>", unsafe_allow_html=True)
@@ -201,8 +206,6 @@ with tab_inversion:
                 with c1: inv["precio_compra"] = st.number_input("Precio compra (€)", value=float(inv["precio_compra"]), key=f"l1_{idx}", step=5000.0, on_change=guardar_automatico, help="El precio de adquisición escriturado de la propiedad.")
                 with c2: inv["gastos_iniciales"] = st.number_input("Reformas e Impuestos (€)", value=float(inv["gastos_iniciales"]), key=f"l2_{idx}", step=1000.0, on_change=guardar_automatico, help="Gastos de notaría, impuestos (ITP/IVA) y reformas de puesta a punto inicial.")
                 with c3: inv["alquiler_mensual"] = st.number_input("Renta mensual líquida (€)", value=float(inv["alquiler_mensual"]), key=f"l3_{idx}", step=50.0, on_change=guardar_automatico, help="El alquiler mensual bruto cobrado al inquilino. Pon 0 si se trata de tu vivienda habitual.")
-                
-                # CAMBIO SOLICITADO: TOOLTIP DETALLADO PARA EVITAR DUPLICAR GASTOS DE INMUEBLE
                 with c4: inv["gastos_anuales"] = st.number_input(
                     "Gastos de explotación/año (€)", 
                     value=float(inv["gastos_anuales"]), 
@@ -226,10 +229,10 @@ with tab_inversion:
                     acumulado_real += (flujo_neto / ((1 + (du["inflacion_anual"]/100)) ** ano))
                     proyeccion_real.append(acumulado_real)
 
-            elif inv["tipo"] == "ROI Simple":
+            elif inv["tipo"] == "Activos Estáticos / Otros":
                 c1, c2 = st.columns(2)
-                with c1: inv["capital_invertido"] = st.number_input("Dinero invertido original (€)", value=float(inv["capital_invertido"]), key=f"r1_{idx}", step=500.0, on_change=guardar_automatico, help="El desembolso inicial invertido en este negocio o préstamo.")
-                with c2: inv["valor_final"] = st.number_input("Valor actual (€)", value=float(inv["valor_final"]), key=f"r2_{idx}", step=500.0, on_change=guardar_automatico, help="La tasación o valor actual de mercado de esta inversión.")
+                with c1: inv["capital_invertido"] = st.number_input("Dinero invertido original (€)", value=float(inv["capital_invertido"]), key=f"r1_{idx}", step=500.0, on_change=guardar_automatico, help="El dinero total desembolsado el día que compraste o adquiriste este bien.")
+                with c2: inv["valor_final"] = st.number_input("Valor actual (€)", value=float(inv["valor_final"]), key=f"r2_{idx}", step=500.0, on_change=guardar_automatico, help="Lo que vale este bien en el mercado hoy en día (Ej: Tasación del oro, saldo actual de criptomonedas, valor de un reloj, etc.).")
                 
                 inv["valor_actual"] = inv["valor_final"]
                 patrimonio_inversiones_total += inv["valor_actual"]
@@ -248,7 +251,7 @@ with tab_inversion:
 # 🏠 MOTOR DE LA HIPOTECA
 # ==========================================
 with tab_hipoteca:
-    st.subheader("🏠 Análisis Técnico y Estratégico de Deuda Bancaria")
+    st.subheader("🏠 Análisis Técnico y Estratégico de Deuda Bancaria", anchor=False)
     col1, col2, col3, col4 = st.columns(4)
     with col1: du["tipo_hipoteca"] = st.selectbox("Tipo de interés:", ["Fija", "Variable", "Mixta"], index=["Fija", "Variable", "Mixta"].index(du["tipo_hipoteca"]), on_change=guardar_automatico)
     with col2: du["capital_original"] = st.number_input("Capital prestado original (€)", value=int(du["capital_original"]), step=5000, on_change=guardar_automatico, help="La cantidad de dinero total que te prestó inicialmente el banco.")
@@ -267,6 +270,7 @@ with tab_hipoteca:
 
     if du["cuota_mensual_actual"] > (du["capital_pendiente"] * tasa_mensual):
         interes_mes_actual = du["capital_pendiente"] * tasa_mensual
+        # CORRECCIÓN DE KEYERROR LOCK: Usamos la variable local calculada correctamente
         amortizacion_capital_mes = cuota_financiera_verdadera - interes_mes_actual
         meses_contrato = -math.log(1 - (du["capital_pendiente"] * tasa_mensual) / du["cuota_mensual_actual"]) / math.log(1 + tasa_mensual)
         anos_contrato_restantes = meses_contrato / 12
@@ -278,7 +282,7 @@ with tab_hipoteca:
 # 📊 VISUALIZACIÓN DE MÉTRICAS PREMIUM (PESTAÑA 1)
 # ==========================================
 with tab_resumen:
-    st.subheader("👑 Cuadro de Mandos Patrimonial")
+    st.subheader("👑 Cuadro de Mandos Patrimonial", anchor=False)
     
     c_kpi1, c_kpi2, c_kpi3 = st.columns(3)
     with c_kpi1:
@@ -323,7 +327,7 @@ with tab_resumen:
 # 🥗 PESTAÑA 2: PRESUPUESTO INTERACTIVO (PLOTLY)
 # ==========================================
 with tab_presupuesto:
-    st.subheader("🥗 Optimización del Presupuesto Estratégico (Regla 50/30/20)")
+    st.subheader("🥗 Optimización del Presupuesto Estratégico (Regla 50/30/20)", anchor=False)
     nec, cap, aho_rec = ingresos_totales * 0.5, ingresos_totales * 0.3, ingresos_totales * 0.2
     
     col_p1, col_p2 = st.columns([2, 3])
@@ -354,7 +358,7 @@ with tab_presupuesto:
 # ==========================================
 with tab_inversion:
     st.markdown("---")
-    st.subheader("📊 Modelado de Escenarios de Riqueza Futura")
+    st.subheader("📊 Modelado de Escenarios de Riqueza Futura", anchor=False)
     
     if len(du.get("inversiones", [])) > 0:
         df_prep_nom = pd.DataFrame(datos_grafica_nominal).set_index("Año")
@@ -382,7 +386,7 @@ with tab_inversion:
 with tab_hipoteca:
     st.markdown("---")
     if anos_contrato_restantes > 0:
-        st.subheader("🧠 Motor Analítico: ¿Priorizar Deuda o Invertir?")
+        st.subheader("🧠 Motor Analítico: ¿Priorizar Deuda o Invertir?", anchor=False)
         
         rentabilidad_media_activos = 0.0
         if len(du.get("inversiones", [])) > 0:
@@ -432,7 +436,7 @@ with tab_hipoteca:
 # 🕊️ PESTAÑA 5: LIBERTAD FINANCIERA DETALLADA
 # ==========================================
 with tab_libertad:
-    st.subheader("🕊️ Tu Meta de Libertad Financiera (Regla del 4%)")
+    st.subheader("🕊️ Tu Meta de Libertad Financiera (Regla del 4%)", anchor=False)
     st.error(f"## 🎯 TU NÚMERO OBJETIVO: {num_libertad:,.2f} €")
     st.write(f"Gastos anuales proyectados: **{gastos_anuales_proyectados:,.2f} €**. Con ese objetivo invertido cubres tu nivel de vida.")
 
@@ -440,7 +444,7 @@ with tab_libertad:
 # 🤖 PESTAÑA 6: CONSULTORÍA DE IA AVANZADA CRUZADA
 # ==========================================
 with tab_ia:
-    st.subheader("🤖 Dictamen e Informe Estratégico de IA")
+    st.subheader("🤖 Dictamen e Informe Estratégico de IA", anchor=False)
     if not api_key_input:
         st.warning("🔒 Introduce tu Gemini API Key en la barra lateral para desbloquear la IA.")
     else:

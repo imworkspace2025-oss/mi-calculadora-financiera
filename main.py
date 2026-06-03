@@ -161,10 +161,6 @@ datos_grafica_nominal = {"Año": cronologia_anos}
 datos_grafica_real = {"Año": cronologia_anos}
 dict_distribucion_activos = {"Efectivo": du["capital_inicial"]}
 
-# Inicializar distribución de activos en el diccionario
-for item in du.get("inversiones", []):
-    dict_distribucion_activos[item["nombre"]] = item["valor_actual"]
-
 # Bucle global para calcular proyecciones financieras complejas sin importar la pestaña
 for idx, inv in enumerate(du.get("inversiones", [])):
     proyeccion_nominal, proyeccion_real = [], []
@@ -192,7 +188,7 @@ for idx, inv in enumerate(du.get("inversiones", [])):
             acumulado_real += (flujo_neto / ((1 + (du["inflacion_anual"]/100)) ** ano))
             proyeccion_real.append(acumulado_real)
 
-    elif inv["tipo"] == "Activos Estáticos / Others":
+    elif inv["tipo"] in ["Activos Estáticos / Otros", "Activos Estáticos / Others"]:
         inv["valor_actual"] = inv["valor_final"]
         patrimonio_inversiones_total += inv["valor_actual"]
         for ano in cronologia_anos:
@@ -201,6 +197,10 @@ for idx, inv in enumerate(du.get("inversiones", [])):
 
     datos_grafica_nominal[inv["nombre"]] = proyeccion_nominal
     datos_grafica_real[inv["nombre"]] = proyeccion_real
+
+# Inicializar distribución de activos con los valores calculados/actualizados
+for item in du.get("inversiones", []):
+    dict_distribucion_activos[item["nombre"]] = item["valor_actual"]
 
 patrimonio_neto_global = du["capital_inicial"] + patrimonio_inversiones_total
 
@@ -360,7 +360,7 @@ with tab_inversion:
                 with c4: inv["gastos_mensuales_inv"] = st.number_input("Gastos fijos al MES (€)", value=float(inv["gastos_mensuales_inv"]), key=f"l5_{idx}", on_change=guardar_automatico)
                 with c5: inv["gastos_anuales"] = st.number_input("Gastos fijos al AÑO (€)", value=float(inv["gastos_anuales"]), key=f"l4_{idx}", on_change=guardar_automatico)
 
-            elif inv["tipo"] == "Activos Estáticos / Otros":
+            elif inv["tipo"] in ["Activos Estáticos / Otros", "Activos Estáticos / Others"]:
                 c1, c2 = st.columns(2)
                 with c1: inv["capital_invertido"] = st.number_input("Original invertido (€)", value=float(inv["capital_invertido"]), key=f"r1_{idx}", on_change=guardar_automatico)
                 with c2: inv["valor_final"] = st.number_input("Valor de mercado (€)", value=float(inv["valor_final"]), key=f"r2_{idx}", on_change=guardar_automatico)
@@ -395,7 +395,7 @@ with tab_hipoteca:
 
 # ----- PESTAÑA 5: HORIZONTE INDEPENDENCIA -----
 with tab_libertad:
-    st.subheader("🕊 ... Tu Meta de Libertad Financiera (Regla del 4%)", anchor=False)
+    st.subheader("🕊️ Tu Meta de Libertad Financiera (Regla del 4%)", anchor=False)
     st.error(f"## 🎯 TU NÚMERO OBJETIVO: {num_libertad:,.2f} €")
     st.write("Este número representa el capital total necesario invertido para poder retirar un 4% anual perpetuo que cubra por completo tu nivel de vida actual sin trabajar.")
 
@@ -505,6 +505,7 @@ with tab_ia:
                     with st.spinner("La IA está auditando todo tu patrimonio consolidado..."):
                         response = model.generate_content(prompt_seguro)
                         st.session_state.auditoria_estatica = response.text
+                        st.rerun()
                 except Exception as e:
                     st.error(f"Error al generar auditoría: {e}")
         
@@ -546,12 +547,7 @@ with tab_ia:
                 with st.spinner("Analizando impactos..."):
                     response = model.generate_content(prompt_seguro)
                     respuesta_ia = response.text
-                
-                st.session_state.historial_chat.append({"role": "assistant", "content": respuesta_ia})
-                st.rerun()
+                    st.session_state.historial_chat.append({"role": "assistant", "content": respuesta_ia})
+                    st.rerun()
             except Exception as e:
-                st.error(f"Error en el chat: {e}")
-
-# Indicador visual de estado de persistencia
-st.sidebar.markdown("---")
-st.sidebar.caption("✅ Autofijado activo. Tus datos se salvan solos con cada click.")
+                st.error(f"Error al conectar con el asesor de IA: {e}")

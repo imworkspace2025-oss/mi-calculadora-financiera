@@ -59,16 +59,11 @@ VALORES_POR_DEFECTO = {
     "inyeccion_capital_unica": 0
 }
 
-# Inicialización a prueba de bombas
+# 1. Crear estado inicial si no existe
 if "datos_usuario" not in st.session_state:
     st.session_state.datos_usuario = VALORES_POR_DEFECTO.copy()
 
-# Forzar que existan todas las llaves por si la caché del navegador es antigua
-for clave, valor in VALORES_POR_DEFECTO.items():
-    if clave not in st.session_state.datos_usuario:
-        st.session_state.datos_usuario[clave] = valor
-
-# Carga desde URL si existe
+# 2. Carga desde URL si el usuario viene desde un enlace compartido externo
 if "db" in st.query_params:
     try:
         datos_url = json.loads(st.query_params["db"])
@@ -77,9 +72,14 @@ if "db" in st.query_params:
     except:
         pass
 
+# 3. BLINDAJE ANTI-KEYERROR: Forzar que existan todas las llaves obligatorias tras procesar la URL
+for clave, valor in VALORES_POR_DEFECTO.items():
+    if clave not in st.session_state.datos_usuario:
+        st.session_state.datos_usuario[clave] = valor
+
 du = st.session_state.datos_usuario
 
-# Migración automática si el usuario tenía el texto antiguo "ROI Simple" guardado
+# Migración de compatibilidad de tipos antiguos
 for item in du.get("inversiones", []):
     if item.get("tipo") == "ROI Simple":
         item["tipo"] = "Activos Estáticos / Otros"
@@ -92,7 +92,6 @@ def guardar_automatico():
 # ==========================================
 st.sidebar.title("⚙️ Configuración Global")
 
-# Gestión ultra-limpia y segura de la API Key de Gemini
 if "api_key_guardada" not in st.session_state:
     st.session_state.api_key_guardada = ""
 
@@ -171,8 +170,7 @@ with tab_inversion:
                     "Naturaleza del activo:", 
                     ["Interés Compuesto (ETFs / Fondos)", "Rentabilidad Inmobiliaria (Ladrillo)", "Activos Estáticos / Otros"],
                     index=["Interés Compuesto (ETFs / Fondos)", "Rentabilidad Inmobiliaria (Ladrillo)", "Activos Estáticos / Otros"].index(inv["tipo"] if inv["tipo"] in ["Interés Compuesto (ETFs / Fondos)", "Rentabilidad Inmobiliaria (Ladrillo)", "Activos Estáticos / Otros"] else "Activos Estáticos / Otros"),
-                    key=f"inv_tipo_{idx}", on_change=guardar_automatico,
-                    help="Elige el modelo matemático del activo. 'Activos Estáticos / Otros' sirve para bienes que no rinden intereses mensuales automáticos (oro, coleccionables, cripto estático o préstamos particulares) donde solo mides su valor actual frente a la inflación."
+                    key=f"inv_tipo_{idx}", on_change=guardar_automatico
                 )
             with col_c3:
                 st.markdown("<br>", unsafe_allow_html=True)
@@ -437,7 +435,7 @@ with tab_libertad:
     st.write(f"Gastos anuales proyectados: **{gastos_anuales_proyectados:,.2f} €**. Con ese objetivo invertido cubres tu nivel de vida.")
 
 # ==========================================
-# 🤖 PESTAÑA 6: AUDITORÍA DE IA CORREGIDA
+# 🤖 PESTAÑA 6: AUDITORÍA DE IA (BLINDADA PARA CLOUD)
 # ==========================================
 with tab_ia:
     st.subheader("🤖 Dictamen e Informe Estratégico de IA", anchor=False)
@@ -446,9 +444,9 @@ with tab_ia:
     else:
         if st.button("🚀 Generar Auditoría Patrimonial Completa"):
             try:
-                genai.configure(api_key=st.session_state.api_key_guardada)
-                # CAMBIO: Actualizado al modelo optimizado estándar actual
-                model = genai.GenerativeModel('gemini-2.5-flash')
+                # 🛠️ PARCHE CLOUD: Forzamos la comunicación a través de REST clásico para evitar bloqueos de puertos en Streamlit
+                genai.configure(api_key=st.session_state.api_key_guardada, transport='rest')
+                model = genai.GenerativeModel('gemini-1.5-flash')
                 
                 resumen_activos = ""
                 for i in du.get("inversiones", []):

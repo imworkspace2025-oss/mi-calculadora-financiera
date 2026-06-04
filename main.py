@@ -167,22 +167,15 @@ def guardar_automatico():
 # ==========================================
 st.sidebar.title("⚙️ Configuración Global")
 
-if "api_key_guardada" not in st.session_state:
-    st.session_state.api_key_guardada = ""
+# Conectamos automáticamente tu código con la clave guardada en los Secrets de Streamlit
+st.session_state.api_key_guardada = st.secrets.get("GEMINI_API_KEY", "")
 
-with st.sidebar.expander("🔑 Inteligencia Artificial (Gemini)", expanded=not bool(st.session_state.api_key_guardada)):
-    if not st.session_state.api_key_guardada:
-        clave_introducida = st.text_input("Introduce tu API Key y pulsa Intro:", type="password")
-        if clave_introducida:
-            st.session_state.api_key_guardada = clave_introducida
-            st.rerun()
-    else:
+with st.sidebar.expander("🔑 Inteligencia Artificial (Gemini)", expanded=False):
+    if st.session_state.api_key_guardada:
         st.success("✅ API Key vinculada y activa")
-        if st.button("🔄 Cambiar / Borrar clave"):
-            st.session_state.api_key_guardada = ""
-            st.session_state.historial_chat = []
-            st.session_state.auditoria_estatica = ""
-            st.rerun()
+        st.text_input("Clave protegida en el servidor:", value="••••••••••••••••", disabled=True, help="Tu clave está a salvo en los Secrets de Streamlit y ya está alimentando a la IA.")
+    else:
+        st.error("❌ No se encontró la clave GEMINI_API_KEY en Secrets.")
 
 with st.sidebar.expander("📥 Tus Flujos de Caja", expanded=True):
     du["ingresos_mensuales"] = st.number_input("Ingresos netos al mes (€)", value=int(du["ingresos_mensuales"]), step=100, on_change=guardar_automatico)

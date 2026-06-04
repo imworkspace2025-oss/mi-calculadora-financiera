@@ -624,8 +624,8 @@ prompt_ia = f"""
     """
 
 col_btn, col_reset = st.columns([3, 1])
-    with col_btn:
-        if st.button("🚀 Generar Auditoría Patrimonial Completa", use_container_width=True):
+with col_btn:
+    if st.button("🚀 Generar Auditoría Patrimonial Completa", use_container_width=True):
             prompt_auditoria = f"""
             {contexto_sistema}
             Redacta un dictamen financiero macroeconomico inicial estructurado en 4 secciones claras:

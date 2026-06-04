@@ -484,7 +484,7 @@ def generar_pdf_premium_bytes():
     # Cabecera principal
     pdf.set_text_color(*COLOR_PRIMARY)
     pdf.set_font("Helvetica", "B", 22)
-    pdf.cell(0, 12, "MOVANA PRO • REPORTING PATRIMONIAL", ln=True, align="C")
+    pdf.cell(0, 12, "MOVANA PRO | REPORTING PATRIMONIAL", ln=True, align="C")
     
     pdf.set_text_color(*COLOR_SECONDARY)
     pdf.set_font("Helvetica", "I", 10)

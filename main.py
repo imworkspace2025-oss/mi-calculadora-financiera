@@ -604,7 +604,8 @@ with st.sidebar.expander("📥 Extraer Dossier Financiero Pro", expanded=True):
             use_container_width=True
         )
     except Exception as err:
-        st.info("Renderizando componentes del servidor... Modifica un parámetro para actualizar el botón de descarga.")
+        # Esto nos va a pintar el error exacto en pantalla para saber qué falta
+        st.error(f"⚠️ Error en el motor PDF: {err}")
 
 
 # ----- PESTAÑA 6: IA CHAT Y DICTAMEN -----

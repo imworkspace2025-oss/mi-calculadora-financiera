@@ -2,5 +2,6 @@ streamlit
 google-generativeai
 pandas
 plotly
-fpdf
+fpdf2
+kaleido
 supabase

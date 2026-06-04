@@ -586,18 +586,15 @@ for i in du.get("inversiones", []):  # <--- Corregido a "inversiones"
         f"{du['inflacion_anual']}%, canalizando los excedentes mensuales de forma diversificada hacia los "
         f"vehículos indexados declarados para batir de forma consistente el escenario real corregido."
     )
-pdf.multi_cell(0, 5, tu_variable_de_texto.replace("•", "-"))    
-    # ... líneas anteriores
-    pdf.ln(12)
-    pdf.set_font("Helvetica", "B", 9)
-    pdf.set_text_color(*COLOR_SECONDARY)
-    pdf.cell(0, 4, "MOVANA ANALYTICS ENGINE", ln=True, align="R")
-    pdf.set_font("Helvetica", "", 8)
-    pdf.cell(0, 4, "Documento validado digitalmente por el Terminal Patrimonial Pro.", ln=True, align="R")
+pdf.multi_cell(0, 5, conclusion_txt.replace("•", "-"))
+pdf.ln(12)
+pdf.set_font("Helvetica", "B", 9)
+pdf.set_text_color(*COLOR_SECONDARY)
+pdf.cell(0, 4, "MOVANA ANALYTICS ENGINE", ln=True, align="R")
+pdf.set_font("Helvetica", "", 8)
+pdf.cell(0, 4, "Documento validado digitalmente por el Terminal Patrimonial Pro.", ln=True, align="R")
 
-    # Forzamos la conversión a bytes puros:
-    return bytes(pdf.output())
-
+return bytes(pdf.output())
 
 # ----- PESTAÑA 6: IA CHAT Y DICTAMEN -----
 with tab_ia:

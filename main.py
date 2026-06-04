@@ -19,7 +19,67 @@ st.markdown("""
     }
     </style>
     """, unsafe_allow_html=True)
+from supabase import create_client
 
+# ----------------------------------------------------------------------
+# 🔐 MOTOR DE USUARIOS Y LOGIN (SUPABASE)
+# ----------------------------------------------------------------------
+SUPABASE_URL = st.secrets["SUPABASE_URL"]
+SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+if "autenticado" not in st.session_state:
+    st.session_state["autenticado"] = False
+    st.session_state["usuario_actual"] = ""
+
+if not st.session_state["autenticado"]:
+    st.title("🔐 Acceso a Movana Pro")
+    
+    pestana_login, pestana_registro = st.tabs(["Iniciar Sesión", "Crear Cuenta Nueva"])
+    
+    with pestana_login:
+        usuario = st.text_input("Usuario / Email", key="login_user")
+        contrasena = st.text_input("Contraseña", type="password", key="login_pass")
+        
+        if st.button("Entrar al Terminal Patrimonial", type="primary"):
+            resultado = supabase.table("perfiles_usuarios").select("*").eq("usuario", usuario).execute()
+            
+            if resultado.data and resultado.data[0]["contrasena"] == contrasena:
+                st.session_state["autenticado"] = True
+                st.session_state["usuario_actual"] = usuario
+                st.success("¡Acceso concedido!")
+                st.rerun()
+            else:
+                st.error("Usuario o contraseña incorrectos.")
+                
+    with pestana_registro:
+        nuevo_usuario = st.text_input("Elige un nombre de usuario", key="reg_user")
+        nueva_contrasena = st.text_input("Elige una contraseña", type="password", key="reg_pass")
+        confirmar_pass = st.text_input("Repite la contraseña", type="password", key="reg_confirm")
+        
+        if st.button("Registrar Cuenta Nueva"):
+            if nuevo_usuario == "" or nueva_contrasena == "":
+                st.warning("Por favor, rellena todos los campos.")
+            elif nueva_contrasena != confirmar_pass:
+                st.error("Las contraseñas no coinciden.")
+            else:
+                comprobacion = supabase.table("perfiles_usuarios").select("*").eq("usuario", nuevo_usuario).execute()
+                if comprobacion.data:
+                    st.error("Este nombre de usuario ya está registrado.")
+                else:
+                    supabase.table("perfiles_usuarios").insert({
+                        "usuario": nuevo_usuario,
+                        "contrasena": nueva_contrasena,
+                        "datos_financieros": {}
+                    }).execute()
+                    st.success("¡Cuenta creada con éxito! Ya puedes iniciar sesión en la pestaña de al lado.")
+
+    # Frenamos la app aquí para que no enseñe nada si no ha iniciado sesión
+    st.stop()
+
+# ----------------------------------------------------------------------
+# A PARTIR DE AQUÍ SE CORRERÁ TU CÓDIGO CUANDO TE LOGUEES:
+# ----------------------------------------------------------------------
 st.title("📊 BIENVENIDO A TU TERMINAL PATRIMONIAL TOP", anchor=False)
 st.write("Tu suite financiera avanzada y automatizada. Los cambios se guardan al instante en la memoria local de tu navegador.")
 

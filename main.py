@@ -595,7 +595,7 @@ for i in du.get("inversiones", []):  # <--- Corregido a "inversiones"
     pdf.set_font("Helvetica", "", 8)
     pdf.cell(0, 4, "Documento validado digitalmente por el Terminal Patrimonial Pro.", ln=True, align="R")
     
-    return pdf.output()
+        return pdf.output()
 
 
 # ----- PESTAÑA 6: IA CHAT Y DICTAMEN -----

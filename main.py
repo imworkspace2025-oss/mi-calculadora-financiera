@@ -461,9 +461,9 @@ import io
 
 def generar_pdf_premium_bytes():
     # 1. Recopilación de textos dinámicos internos
-    txt_activos_pdf = ""
-    for i in du.get("inversiones", []):
-        txt_activos_pdf += f"- {i['nombre']} ({i['tipo']}): {i['valor_actual']} EUR\n"
+    txt_activos = ""
+for i in du.get("inversiones", []):  # <--- Corregido a "inversiones"
+    txt_activos += f"- {i['nombre']}: {i['valor_actual']} EUR\n"
 
     txt_deudas_pdf = ""
     for d in du.get("deudas", []):

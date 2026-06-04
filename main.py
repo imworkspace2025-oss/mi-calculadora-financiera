@@ -609,42 +609,39 @@ with tab_ia:
         txt_deudas += f"- {d['nombre']} ({d['tipo']}): Total: {d['pendiente']} EUR\n"
 
     # >>> ¡CORRECCIÓN AQUÍ! Guardamos todo el bloque de texto dentro de una variable f-string:
-    prompt_ia = f"""
-    - Liquidez y Emergencias: Colchon de {du['capital_inicial']} EUR que cubre {meses_cobertura:.1f} meses de vida (Calificacion: {estado_seguridad}).
+prompt_ia = f"""
+    - Liquidez y Emergencias: Colchon de {du['capital_initial']} EUR que cubre {meses_cobertura:.1f} meses de vida (Calificacion: {estado_seguridad}).
     - Activos actuales:\n{txt_activos}
     - Deudas y Pasivos:\n- Hipoteca: Debe {du['capital_pendiente']} EUR al {du['interes_anual_actual']}%.\n{txt_deudas}
     - Perfil Laboral: Empleado en {du['nombre_empresa']} con {du['antiguedad_trabajo']} años de antiguedad.
     - Objetivo Financiero: {num_libertad:.0f} EUR.
+
+    REGLAS DE CONVERSACIÓN:
+    1. Propon distribuciones en ETFs globales (MSCI World, S&P 500) o cuentas de alta remuneracion.
+    2. Analiza específicamente el impacto de sus deudas actuales y proximas sobre su capacidad de inversion.
+    3. Evalua su nivel de seguridad basandote en sus meses reales del Fondo de Emergencia.
+    4. Escribe en Markdown profesional sin usar emojis ni símbolos de euro (usa la palabra 'EUR') para evitar roturas de codificacion.
     """
 
-    # ... debajo de esto ya continuará tu lógica para enviarle 'prompt_ia' a Gemini ...
-        
-        REGLAS DE CONVERSACIÓN:
-        1. Propon distribuciones en ETFs globales (MSCI World, S&P 500) o cuentas de alta remuneracion.
-        2. Analiza especificamente el impacto de sus deudas actuales y proximas sobre su capacidad de inversion.
-        3. Evalua su nivel de seguridad basandote en sus meses reales del Fondo de Emergencia.
-        4. Escribe en Markdown profesional sin usar emojis ni simbolos de euro (usa la palabra 'EUR') para evitar roturas de codificacion.
-        """
-
-        col_btn, col_reset = st.columns([3, 1])
-        with col_btn:
-            if st.button("🚀 Generar Auditoría Patrimonial Completa", use_container_width=True):
-                prompt_auditoria = f"""
-                {contexto_sistema}
-                Redacta un dictamen financiero macroeconomico inicial estructurado en 4 secciones claras:
-                1. Analisis del Fondo de Emergencia actual frente a su matriz de deudas (actuales y proximas).
-                2. Evaluacion del Asset Allocation frente a la inflacion de {du['inflacion_anual']}%.
-                3. Critica de la salud financiera global ante el sector bancario (Score de credito segun su empresa y antiguedad).
-                4. Recomendacion tactica personalizada para acelerar la meta de {num_libertad:.0f} EUR.
-                """
-                prompt_seguro = prompt_auditoria.replace("€", "EUR")
-                prompt_seguro = "".join([c for c in prompt_seguro if ord(c) < 256])
-
-                try:
-                    genai.configure(api_key=st.session_state.api_key_guardada, transport='rest')
-                    model = genai.GenerativeModel('gemini-2.5-flash')
-                    with st.spinner("La IA está auditando todo tu patrimonio consolidado..."):
-                        response = model.generate_content(prompt_seguro)
+    col_btn, col_reset = st.columns([3, 1])
+    with col_btn:
+        if st.button("🚀 Generar Auditoría Patrimonial Completa", use_container_width=True):
+            prompt_auditoria = f"""
+            {contexto_sistema}
+            Redacta un dictamen financiero macroeconomico inicial estructurado en 4 secciones claras:
+            1. Analisis del Fondo de Emergencia actual frente a su matriz de deudas (actuales y proximas).
+            2. Evaluacion del Asset Allocation frente a la inflacion de {du['inflacion_anual']}%.
+            3. Critica de la salud financiera global ante el sector bancario (Score de credito segun su empresa y antiguedad).
+            4. Recomendacion tactica personalizada para acelerar la meta de {num_libertad:.0f} EUR.
+            """
+            prompt_seguro = prompt_auditoria.replace("€", "EUR")
+            prompt_seguro = prompt_seguro.replace("$", "USD")
+            
+            try:
+                genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+                model = genai.GenerativeModel('gemini-1.5-flash')
+                with st.spinner("Analizando con la IA..."):
+                    response = model.generate_content(prompt_seguro)
                         st.session_state.auditoria_estatica = response.text
                         st.rerun()
                 except Exception as e:

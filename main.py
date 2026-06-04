@@ -623,7 +623,7 @@ prompt_ia = f"""
     4. Escribe en Markdown profesional sin usar emojis ni símbolos de euro (usa la palabra 'EUR') para evitar roturas de codificacion.
     """
 
-    col_btn, col_reset = st.columns([3, 1])
+col_btn, col_reset = st.columns([3, 1])
     with col_btn:
         if st.button("🚀 Generar Auditoría Patrimonial Completa", use_container_width=True):
             prompt_auditoria = f"""

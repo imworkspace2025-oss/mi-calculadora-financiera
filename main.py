@@ -530,6 +530,132 @@ def generar_pdf_premium_bytes():
         pdf.cell(130, 6, fila[1], border="B", ln=True)
     pdf.ln(6)
     
+    # Sección 2: Asset Allocation con Gráfica integrada (Solución PIL)
+    pdf.set_text_color(*COLOR_PRIMARY)
+    pdf.set_font("Helvetica", "B", 12)
+    pdf.cell(0, 8, "2. Distribución y Asignación de Activos (Asset Allocation)", ln=True)
+    pdf.ln(2)
+    
+    try:
+        from PIL import Image
+        img_pie_bytes = fig_pie.to_image(format="png", width=650, height=300, scale=2)
+        # Convertimos el bytearray a una imagen PIL real
+        img_pie_pil = Image.open(io.BytesIO(img_pie_bytes))
+        pdf.image(img_pie_pil, x=20, y=pdf.get_y(), w=170)
+        pdf.ln(82)  
+    except Exception as e:
+        pdf.set_font("Helvetica", "I", 9)
+        pdf.cell(0, 6, f"[Gráfica de asignación optimizada en memoria - {e}]", ln=True)
+        pdf.ln(4)
+
+    # Forzamos salto de página para mantener el diseño premium limpio
+    pdf.add_page()
+    
+    # Sección 3: Proyecciones temporales con Gráfica (Solución PIL)
+    pdf.set_text_color(*COLOR_PRIMARY)
+    pdf.set_font("Helvetica", "B", 12)
+    pdf.cell(0, 8, f"3. Evolución del Capital Proyectado a {du['anos_proyeccion']} años vista", ln=True)
+    pdf.ln(2)
+    
+    try:
+        from PIL import Image
+        img_lines_bytes = fig_lineas.to_image(format="png", width=650, height=300, scale=2)
+        # Convertimos el bytearray a una imagen PIL real
+        img_lines_pil = Image.open(io.BytesIO(img_lines_bytes))
+        pdf.image(img_lines_pil, x=20, y=pdf.get_y(), w=170)
+        pdf.ln(82)
+    except Exception as e:
+        pdf.set_font("Helvetica", "I", 9)
+        pdf.cell(0, 6, f"[Gráfica de evolución temporal optimizada - {e}]", ln=True)
+        pdf.ln(4)
+        
+    # Sección 4: Explicación final (Escenario técnico de futuro)
+    pdf.set_text_color(*COLOR_PRIMARY)
+    pdf.set_font("Helvetica", "B", 12)
+    pdf.cell(0, 8, "4. Dictamen de Previsión Estratégica", ln=True)
+    
+    pdf.set_font("Helvetica", "", 10)
+    pdf.set_text_color(*COLOR_TEXT)
+    
+    deuda_total_calc = du['capital_pendiente'] + total_pendiente_deudas_extra
+    conclusion_txt = (
+        f"Evaluación final del escenario patrimonial: Con un Objetivo de Independencia Financiera establecido en "
+        f"{num_libertad:,.0f} EUR, el perfil actual presenta una tasa de ahorro del {tasa_ahorro_aux:.1f}%. "
+        f"La carga total de pasivos reconocidos asciende a {deuda_total_calc:,.0f} EUR. El motor de simulación "
+        f"recomienda optimizar el arbitraje de tipos de interés frente a la inflación estimada del "
+        f"{du['inflacion_anual']}%, canalizando los excedentes mensuales de forma diversificada hacia los "
+        f"vehículos indexados declarados para batir de forma consistente el escenario real corregido."
+    )
+    pdf.multi_cell(0, 5, conclusion_txt)
+    
+    pdf.ln(12)
+    pdf.set_font("Helvetica", "B", 9)
+    pdf.set_text_color(*COLOR_SECONDARY)
+    pdf.cell(0, 4, "MOVANA ANALYTICS ENGINE", ln=True, align="R")
+    pdf.set_font("Helvetica", "", 8)
+    pdf.cell(0, 4, "Documento validado digitalmente por el Terminal Patrimonial Pro.", ln=True, align="R")
+    
+    return pdf.output()
+
+    # 2. Configuración del lienzo PDF
+    pdf = FPDF(orientation="P", unit="mm", format="A4")
+    pdf.set_auto_page_break(auto=True, margin=20)
+    pdf.add_page()
+    
+    # Colores corporativos Movana (Gris oscuro premium y Azul ejecutivo)
+    COLOR_PRIMARY = (26, 36, 43)    
+    COLOR_SECONDARY = (70, 100, 120) 
+    COLOR_TEXT = (50, 50, 50)       
+    
+    # Cabecera principal
+    pdf.set_text_color(*COLOR_PRIMARY)
+    pdf.set_font("Helvetica", "B", 22)
+    pdf.cell(0, 12, "MOVANA PRO | REPORTING PATRIMONIAL", ln=True, align="C")
+    
+    pdf.set_text_color(*COLOR_SECONDARY)
+    pdf.set_font("Helvetica", "I", 10)
+    pdf.cell(0, 6, "Dossier Ejecutivo de Planificación y Viabilidad Financiera", ln=True, align="C")
+    pdf.ln(4)
+    
+    # Línea divisoria elegante
+    pdf.set_draw_color(*COLOR_SECONDARY)
+    pdf.set_line_width(0.4)
+    pdf.line(15, pdf.get_y(), 195, pdf.get_y())
+    pdf.ln(6)
+    
+    # Explicación previa (Introducción analítica)
+    pdf.set_text_color(*COLOR_TEXT)
+    pdf.set_font("Helvetica", "", 10)
+    intro_txt = (
+        f"Este informe técnico consolida métricas clave del perfil patrimonial del usuario. "
+        f"Ha sido estructurado bajo estándares bancarios y de auditoría para facilitar la evaluación "
+        f"de flujos de caja, distribución de activos y la resiliencia financiera a largo plazo."
+    )
+    pdf.multi_cell(0, 5, intro_txt)
+    pdf.ln(4)
+    
+    # Sección 1: Ratios macro de flujos
+    pdf.set_text_color(*COLOR_PRIMARY)
+    pdf.set_font("Helvetica", "B", 12)
+    pdf.cell(0, 8, "1. Indicadores Base de Flujo de Caja", ln=True)
+    
+    pdf.set_font("Helvetica", "", 9)
+    pdf.set_text_color(*COLOR_TEXT)
+    
+    datos_tabla = [
+        ["Entidad Laboral Declarada:", f"{du['nombre_empresa']} (Antigüedad: {du['antiguedad_trabajo']} años)"],
+        ["Ingresos Líquidos Mensuales:", f"{du['ingresos_mensuales']:,} EUR/mes"],
+        ["Capacidad de Ahorro Neto:", f"{du['ahorro_mensual_total']:,} EUR/mes (Tasa: {tasa_ahorro_aux:.1f}%)"],
+        ["Colchón de Contingencia Real:", f"{du['capital_inicial']:,} EUR ({meses_cobertura:.1f} meses de cobertura - {estado_seguridad})"]
+    ]
+    
+    for fila in datos_tabla:
+        pdf.set_font("Helvetica", "B", 9)
+        pdf.cell(60, 6, fila[0], border="B")
+        pdf.set_font("Helvetica", "", 9)
+        pdf.cell(130, 6, fila[1], border="B", ln=True)
+    pdf.ln(6)
+    
     # Sección 2: Asset Allocation con Gráfica integrada
     pdf.set_text_color(*COLOR_PRIMARY)
     pdf.set_font("Helvetica", "B", 12)

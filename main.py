@@ -586,33 +586,41 @@ for i in du.get("inversiones", []):  # <--- Corregido a "inversiones"
         f"{du['inflacion_anual']}%, canalizando los excedentes mensuales de forma diversificada hacia los "
         f"vehículos indexados declarados para batir de forma consistente el escenario real corregido."
     )
-    pdf.multi_cell(0, 5, conclusion_txt)
-    
+pdf.multi_cell(0, 5, tu_variable_de_texto.replace("•", "-"))    
+    # ... líneas anteriores
     pdf.ln(12)
     pdf.set_font("Helvetica", "B", 9)
     pdf.set_text_color(*COLOR_SECONDARY)
     pdf.cell(0, 4, "MOVANA ANALYTICS ENGINE", ln=True, align="R")
     pdf.set_font("Helvetica", "", 8)
     pdf.cell(0, 4, "Documento validado digitalmente por el Terminal Patrimonial Pro.", ln=True, align="R")
-    
-        return pdf.output()
+
+    # Forzamos la conversión a bytes puros:
+    return bytes(pdf.output())
 
 
 # ----- PESTAÑA 6: IA CHAT Y DICTAMEN -----
 with tab_ia:
-    st.subheader("🤖 Dictamen e Informe Estratégico de IA", anchor=False)
-    
-    if not st.session_state.get("api_key_guardada"):
-        st.warning("🔒 Introduce tu Gemini API Key en la barra lateral para desbloquear la IA.")
-    else:
-        contexto_sistema = f"""
-        Eres el mejor agente del mundo en asesoria financiera y gestion de patrimonio. Tu mision es orientar al usuario de forma analitica basandote en su perfil:
-        - Flujos: Ingresos {du['ingresos_mensuales']} EUR/mes, Ahorro {du['ahorro_mensual_total']} EUR/mes, Pagas Extras: {du['dinero_extra_anual']} EUR/año.
-        - Liquidez y Emergencias: Colchon de {du['capital_inicial']} EUR que cubre {meses_cobertura:.1f} meses de vida (Calificacion: {estado_seguridad}).
-        - Activos actuales:\n{txt_activos}
-        - Deudas y Pasivos:\n- Hipoteca: Debe {du['capital_pendiente']} EUR al {du['interes_anual_actual']}%.\n{txt_deudas}
-        - Perfil Laboral: Empleado en {du['nombre_empresa']} con {du['antiguedad_trabajo']} años de antiguedad.
-        - Objetivo Financiero: {num_libertad:.0f} EUR.
+    # 1. Generamos las variables de texto para que la IA las pueda leer:
+    du = st.session_state.datos_usuario
+    txt_activos = ""
+    for i in du.get("inversiones", []):
+        txt_activos += f"- {i['nombre']} ({i['tipo']}): {i['valor_actual']} EUR\n"
+        
+    txt_deudas = ""
+    for d in du.get("deudas", []):
+        txt_deudas += f"- {d['nombre']} ({d['tipo']}): Total: {d['pendiente']} EUR\n"
+
+    # >>> ¡CORRECCIÓN AQUÍ! Guardamos todo el bloque de texto dentro de una variable f-string:
+    prompt_ia = f"""
+    - Liquidez y Emergencias: Colchon de {du['capital_inicial']} EUR que cubre {meses_cobertura:.1f} meses de vida (Calificacion: {estado_seguridad}).
+    - Activos actuales:\n{txt_activos}
+    - Deudas y Pasivos:\n- Hipoteca: Debe {du['capital_pendiente']} EUR al {du['interes_anual_actual']}%.\n{txt_deudas}
+    - Perfil Laboral: Empleado en {du['nombre_empresa']} con {du['antiguedad_trabajo']} años de antiguedad.
+    - Objetivo Financiero: {num_libertad:.0f} EUR.
+    """
+
+    # ... debajo de esto ya continuará tu lógica para enviarle 'prompt_ia' a Gemini ...
         
         REGLAS DE CONVERSACIÓN:
         1. Propon distribuciones en ETFs globales (MSCI World, S&P 500) o cuentas de alta remuneracion.

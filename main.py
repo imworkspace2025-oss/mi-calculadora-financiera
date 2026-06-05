@@ -699,6 +699,65 @@ with tab_inversion:
                     st.rerun()
                 st.markdown("</div>", unsafe_allow_html=True)
 # ----- PESTAÑA 4: CONSULTOR PATRIMONIAL IA INTERACTIVO -----
+# ----- PESTAÑA: CONSULTOR HIPOTECARIO (MÓDULO PREMIUM) -----
+with tab_hipotecario:
+    st.subheader("🏦 Consultor Hipotecario y Optimización de Deuda", anchor=False)
+    st.caption("Analiza la eficiencia de tus préstamos, costes de financiación y simula amortizaciones en tiempo real.")
+    
+    # Inicializar la lista de deudas de forma segura en tu diccionario 'du'
+    if "deudas" not in du:
+        du["deudas"] = []
+        
+    # Botón de acción con ID único absoluto
+    if st.button("➕ Añadir Nueva Hipoteca / Préstamo", key="btn_vincular_hipoteca_modulo_top_final"):
+        du["deudas"].append({
+            "nombre": f"Hipoteca/Préstamo {len(du['deudas']) + 1}",
+            "capital_pendiente": 100000.0,
+            "interes_anual": 3.0,
+            "plazo_años": 20
+        })
+        guardar_automatico()
+        st.rerun()
+        
+    # Renderizado de la matriz de deudas vigentes
+    for idx, deuda in enumerate(du.get("deudas", [])):
+        with st.container(border=True):
+            col_d1, col_d2, col_d3 = st.columns([3, 3, 4])
+            
+            with col_d1:
+                deuda["nombre"] = st.text_input("Identificador de la Deuda:", value=deuda.get("nombre", ""), key=f"deuda_top_id_{idx}", on_change=guardar_automatico)
+                deuda["plazo_años"] = st.number_input("Plazo Restante (Años):", value=int(deuda.get("plazo_años", 20)), min_value=1, key=f"deuda_top_plz_{idx}", on_change=guardar_automatico)
+            
+            with col_d2:
+                deuda["capital_pendiente"] = st.number_input("Capital Vivo Pendiente (€):", value=float(deuda.get("capital_pendiente", 0.0)), key=f"deuda_top_cap_{idx}", on_change=guardar_automatico)
+                deuda["interes_anual"] = st.number_input("Tipo de Interés Nominal (TIN %):", value=float(deuda.get("interes_anual", 0.0)), key=f"deuda_top_int_{idx}", on_change=guardar_automatico)
+                
+            with col_d3:
+                st.markdown("<p style='color:#888; font-size:12px; margin-bottom:2px; font-weight:bold;'>ANÁLISIS DE CARGA DE DEUDA</p>", unsafe_allow_html=True)
+                
+                cap = float(deuda.get("capital_pendiente", 0.0))
+                tin_mensual = (float(deuda.get("interes_anual", 0.0)) / 100) / 12
+                meses = int(deuda.get("plazo_años", 20)) * 12
+                
+                # Sistema de amortización francés
+                if tin_mensual > 0 and meses > 0:
+                    cuota = cap * (tin_mensual * (1 + tin_mensual)**meses) / ((1 + tin_mensual)**meses - 1)
+                else:
+                    cuota = cap / meses if meses > 0 else 0.0
+                    
+                total_intereses = (cuota * meses) - cap if (cuota * meses) > cap else 0.0
+                
+                # Métricas con formato premium de tu app
+                st.metric("Cuota Mensual Calculada", formato_euro(cuota))
+                st.caption(f"Intereses totales pendientes de pago: {formato_euro(total_intereses)}")
+                
+                # Botón para eliminar el préstamo alineado a la derecha
+                st.markdown("<div style='text-align: right; margin-top: 5px;'>", unsafe_allow_html=True)
+                if st.button("🗑️ Eliminar Préstamo", key=f"deuda_top_del_btn_{idx}"):
+                    du["deudas"].pop(idx)
+                    guardar_automatico()
+                    st.rerun()
+                st.markdown("</div>", unsafe_allow_html=True)
 with tab_ia:
     st.subheader("🤖 Consultor Patrimonial Privado", anchor=False)
     st.caption("Tu IA tiene acceso en tiempo real a tu matriz de deudas, inmuebles e inversiones para asesorarte.")

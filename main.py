@@ -598,3 +598,134 @@ with tab_inversion:
         })
         guardar_automatico()
         st.rerun()
+# ----- PESTAÑA 3: RENTABILIDAD E INVERSION -----
+with tab_inversion:
+    st.subheader("💼 Matriz Patrimonial y Asignación de Activos", anchor=False)
+    if st.button("➕ Vincular Nuevo Activo/Inversión"):
+        du["inversiones"].append({
+            "nombre": f"Nuevo Activo {len(du['inversiones']) + 1}",
+            "tipo": "Interés Compuesto (ETFs / Fondos)",
+            "valor_actual": 0.0, 
+            "aportacion_mensual": 0.0, 
+            "interes_anual": 7.0,
+            "precio_compra": 100000.0, 
+            "gastos_iniciales": 10000.0, 
+            "alquiler_mensual": 500.0, 
+            "gastos_mensuales_inv": 40.0, 
+            "gastos_anuales": 600.0, 
+            "capital_invertido": 5000.0, 
+            "valor_final": 5000.0,
+            "financiacion_inmueble": 0.0
+        })
+        guardar_automatico()
+        st.rerun()
+
+    # Bucle para renderizar y editar cada activo guardado
+    for idx, inv in enumerate(du.get("inversiones", [])):
+        with st.container(border=True):
+            col_inv1, col_inv2, col_inv3, col_inv4 = st.columns([2, 3, 3, 1])
+            with col_inv1:
+                inv["nombre"] = st.text_input("Nombre del Activo:", value=inv["nombre"], key=f"inv_nom_{idx}", on_change=guardar_automatico)
+            with col_inv2:
+                inv["tipo"] = st.selectbox("Naturaleza del Activo:", ["Interés Compuesto (ETFs / Fondos)", "Rentabilidad Inmobiliaria (Ladrillo)", "Activos Estáticos / Otros"], index=["Interés Compuesto (ETFs / Fondos)", "Rentabilidad Inmobiliaria (Ladrillo)", "Activos Estáticos / Otros"].index(inv["tipo"] if inv["tipo"] in ["Interés Compuesto (ETFs / Fondos)", "Rentabilidad Inmobiliaria (Ladrillo)", "Activos Estáticos / Otros"] else "Interés Compuesto (ETFs / Fondos)"), key=f"inv_tipo_{idx}", on_change=st.rerun)
+            
+            with col_inv3:
+                if inv["tipo"] == "Interés Compuesto (ETFs / Fondos)":
+                    inv["valor_actual"] = st.number_input("Capital Actual (€):", value=float(inv["valor_actual"]), key=f"inv_val_{idx}", on_change=guardar_automatico)
+                    inv["aportacion_mensual"] = st.number_input("Aportación Mensual (€):", value=float(inv["aportacion_mensual"]), key=f"inv_apo_{idx}", on_change=guardar_automatico)
+                    inv["interes_anual"] = st.number_input("Interés Anual Estimado (%):", value=float(inv["interes_anual"]), key=f"inv_int_{idx}", on_change=guardar_automatico)
+                elif inv["tipo"] == "Rentabilidad Inmobiliaria (Ladrillo)":
+                    inv["precio_compra"] = st.number_input("Precio de Compra (€):", value=float(inv["precio_compra"]), key=f"inv_pre_{idx}", on_change=guardar_automatico)
+                    inv["alquiler_mensual"] = st.number_input("Alquiler Mensual percibido (€):", value=float(inv["alquiler_mensual"]), key=f"inv_alq_{idx}", on_change=guardar_automatico)
+                    inv["financiacion_inmueble"] = st.number_input("Hipoteca pendiente sobre este inmueble (€):", value=float(inv["financiacion_inmueble"]), key=f"inv_fin_{idx}", on_change=guardar_automatico)
+                else:
+                    inv["valor_final"] = st.number_input("Valor de Liquidación Estático (€):", value=float(inv["valor_final"]), key=f"inv_fin_est_{idx}", on_change=guardar_automatico)
+            
+            with col_inv4:
+                st.markdown("<br>", unsafe_allow_html=True)
+                if st.button("❌", key=f"inv_del_{idx}"):
+                    du["inversiones"].pop(idx)
+                    guardar_automatico()
+                    st.rerun()
+
+# ----- PESTAÑA 4: CONSULTOR HIPOTECARIO -----
+with tab_hipoteca:
+    st.subheader("🏠 Consultor y Optimizador de Carga Hipotecaria", anchor=False)
+    
+    col_h1, col_h2 = st.columns([2, 3])
+    with col_h1:
+        with st.container(border=True):
+            st.markdown("#### Datos de la Hipoteca Principal")
+            du["tipo_hipoteca"] = st.selectbox("Tipo de Estructura:", ["Fija", "Variable"], index=["Fija", "Variable"].index(du["tipo_hipoteca"]), on_change=st.rerun)
+            du["capital_original"] = st.number_input("Capital Concedido Original (€)", value=int(du["capital_original"]), step=5000, on_change=guardar_automatico)
+            du["capital_pendiente"] = st.number_input("Capital Pendiente de Amortizar (€)", value=int(du["capital_pendiente"]), step=5000, on_change=guardar_automatico)
+            du["interes_anual_actual"] = st.number_input("Tipo de Interés Nominal Anual (%)", value=float(du["interes_anual_actual"]), step=0.1, on_change=guardar_automatico)
+            du["cuota_mensual_actual"] = st.number_input("Cuota Mensual Actual (€)", value=int(du["cuota_mensual_actual"]), step=50, on_change=guardar_automatico)
+            du["seguros_anuales_banco"] = st.number_input("Seguros obligatorios vinculados (Al año €)", value=int(du["seguros_anuales_banco"]), step=50, on_change=guardar_automatico)
+
+    with col_h2:
+        with st.container(border=True):
+            st.markdown("#### ⚖️ Métricas de Sostenibilidad Bancaria")
+            c_m1, c_m2 = st.columns(2)
+            with c_m1:
+                st.metric("Cuota Mensual Indexada (Con Riesgos)", f"{cuota_hipotecaria_final:,.2f} €")
+                st.metric("Carga en Seguros (Mes)", f"{coste_mensual_seguros:,.2f} €")
+            with c_m2:
+                st.metric("Años de Contrato Restantes", f"{anos_contrato_restantes:.1f} años")
+                st.metric("Intereses Pendientes al Banco", f"{intereses_totales_banco:,.2f} €")
+
+# ----- PESTAÑA 5: HORIZONTE INDEPENDENCIA -----
+with tab_libertad:
+    st.subheader("🕊️ Horizonte de Independencia y Retiro", anchor=False)
+    
+    with st.container(border=True):
+        st.plotly_chart(fig_lineas, use_container_width=True)
+        
+    st.markdown("### 📥 Descarga de Documentación Oficial")
+    st.write("Genera el informe consolidado con formato ejecutivo listo para su presentación en banca privada o análisis patrimonial.")
+    
+    pdf_bytes = generar_pdf_premium_bytes()
+    st.download_button(
+        label="📥 Descargar Dossier Patrimonial Premium (PDF)",
+        data=pdf_bytes,
+        file_name="Informe_Patrimonial_Premium.pdf",
+        mime="application/pdf"
+    )
+
+# ----- PESTAÑA 6: DICTAMEN E IA CHAT -----
+with tab_ia:
+    st.subheader("🤖 Auditoría Financiera Mediante Inteligencia Artificial", anchor=False)
+    
+    if not st.session_state.api_key_guardada:
+        st.error("Falta la clave GEMINI_API_KEY en las variables del sistema (secrets).")
+    else:
+        if st.button("📊 Ejecutar Auditoría Patrimonial Inteligente", type="primary"):
+            with st.spinner("Analizando matrices de flujos, pasivos y plusvalías..."):
+                try:
+                    genai.configure(api_key=st.session_state.api_key_guardada)
+                    model = genai.GenerativeModel("gemini-1.5-flash")
+                    
+                    prompt_auditoria = f"""
+                    Actúa como un experto auditor de Banca Privada. Analiza la siguiente situación financiera y redacta un dictamen profesional estructurado en 4 bloques: 1. Diagnóstico de Salud Financiera, 2. Análisis del Nivel de Endeudamiento, 3. Optimización Fiscal y Eficiencia, 4. Plan de Acción Recomendado.
+                    
+                    DATOS DE BALANCE DEL USUARIO:
+                    - Ingresos Netos al Mes (con extras): {ingresos_totales:.2f} €
+                    - Ahorro Líquido al Mes: {du['ahorro_mensual_total']} €
+                    - Fondo de Maniobra Actual (Efectivo): {du['capital_inicial']} €
+                    - Gastos de Operación Mensuales Totales: {gastos_mensuales_totales:.2f} €
+                    - Capital Pendiente Hipoteca: {du['capital_pendiente']} €
+                    - Otras deudas consolidadas: {total_pendiente_deudas_extra} €
+                    - Patrimonio en Activos/Inversiones: {patrimonio_inversiones_total:.2f} €
+                    - Meta Numérica de Retiro: {num_libertad:.2f} €
+                    - Inflación y Estrés Macroeconómico Aplicado: {du['inflacion_anual']}%
+                    """
+                    
+                    respuesta = model.generate_content(prompt_auditoria)
+                    st.session_state.auditoria_estatica = respuesta.text
+                    st.success("¡Dictamen generado con éxito! Ya se ha integrado también en tu informe PDF.")
+                except Exception as e:
+                    st.error(f"Error en la conexión con la IA: {e}")
+                    
+        if st.session_state.auditoria_estatica:
+            with st.container(border=True):
+                st.markdown(st.session_state.auditoria_estatica)

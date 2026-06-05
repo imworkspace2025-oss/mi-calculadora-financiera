@@ -296,109 +296,174 @@ if len(du.get("inversiones", [])) > 0:
 def generar_pdf_premium_bytes():
     tasa_ahorro_aux = (du["ahorro_mensual_total"] / ingresos_totales) * 100 if ingresos_totales > 0 else 0
 
+    # Inicializar FPDF de forma limpia
     pdf = FPDF(orientation="P", unit="mm", format="A4")
-    pdf.set_auto_page_break(auto=True, margin=20)
+    pdf.set_auto_page_break(auto=True, margin=25)
     pdf.add_page()
     
-    COLOR_PRIMARY = (26, 36, 43)    
-    COLOR_SECONDARY = (70, 100, 120) 
-    COLOR_TEXT = (50, 50, 50)       
+    # paleta de colores institucional (Premium Slate & Deep Navy)
+    COLOR_PRIMARY = (15, 23, 42)     # Azul Marino Muy Oscuro
+    COLOR_SECONDARY = (71, 85, 105)  # Gris Pizarra Corporativo
+    COLOR_BG_TABLE = (241, 245, 249) # Fondo gris claro para tablas
+    COLOR_TEXT = (51, 65, 85)        # Texto principal suave
     
+    # --- ENCABEZADO PREMIUM ---
     pdf.set_text_color(*COLOR_PRIMARY)
-    pdf.set_font("Helvetica", "B", 22)
-    pdf.cell(0, 12, "MOVANA PRO | REPORTING PATRIMONIAL", ln=True, align="C")
+    pdf.set_font("Helvetica", "B", 20)
+    pdf.cell(0, 10, "MOVANA PATRIMONIAL", ln=True, align="L")
     
     pdf.set_text_color(*COLOR_SECONDARY)
-    pdf.set_font("Helvetica", "I", 10)
-    pdf.cell(0, 6, "Dossier Ejecutivo de Planificación Financiera", ln=True, align="C")
-    pdf.ln(4)
+    pdf.set_font("Helvetica", "", 9)
+    pdf.cell(100, 5, "Terminal de Análisis de Activos & Riesgos", align="L")
+    pdf.cell(0, 5, "CÓDIGO: MV-2026-CONF", align="R", ln=True)
     
+    # Línea divisoria elegante
     pdf.set_draw_color(*COLOR_SECONDARY)
-    pdf.set_line_width(0.4)
-    pdf.line(15, pdf.get_y(), 195, pdf.get_y())
+    pdf.set_line_width(0.5)
+    pdf.line(10, pdf.get_y() + 2, 200, pdf.get_y() + 2)
+    pdf.ln(8)
+    
+    # --- METADATOS DEL PROYECTO ---
+    pdf.set_fill_color(*COLOR_BG_TABLE)
+    pdf.rect(10, pdf.get_y(), 190, 15, "F")
+    pdf.set_font("Helvetica", "B", 9)
+    pdf.set_text_color(*COLOR_PRIMARY)
+    pdf.text(14, pdf.get_y() + 6, "PREPARADO PARA:")
+    pdf.text(14, pdf.get_y() + 11, f"Titular del Canal Local ({st.session_state.usuario_actual})")
+    
+    pdf.text(120, pdf.get_y() + 6, "FECHA DE EMISIÓN:")
+    pdf.text(120, pdf.get_y() + 11, "05 de Junio, 2026") # Mantenemos coherencia temporal
+    pdf.ln(20)
+    
+    # --- INTRODUCCIÓN ---
+    pdf.set_font("Helvetica", "", 10)
+    pdf.set_text_color(*COLOR_TEXT)
+    intro_txt = (
+        "El presente informe ejecutivo consolida y audita de forma estructurada las métricas clave "
+        "del perfil patrimonial del solicitante. Este dossier ha sido diseñado siguiendo directrices de "
+        "análisis de riesgos corporativos para evaluar flujos de caja, pasivos consolidados y resiliencia macroeconómica."
+    )
+    pdf.multi_cell(0, 5, intro_txt.encode('latin-1', 'ignore').decode('latin-1'))
     pdf.ln(6)
     
-    pdf.set_text_color(*COLOR_TEXT)
-    pdf.set_font("Helvetica", "", 10)
-    intro_txt = (
-        f"Este informe técnico consolida métricas clave del perfil patrimonial del usuario. "
-        f"Ha sido estructurado bajo estándares bancarios y de auditoría para facilitar la evaluación "
-        f"de flujos de caja, distribución de activos y la resiliencia financiera a largo plazo."
-    )
-    pdf.multi_cell(0, 5, intro_txt)
-    pdf.ln(4)
-    
+    # --- SECCIÓN 1: TABLA ESTILO BANCA PRIVADA ---
     pdf.set_text_color(*COLOR_PRIMARY)
     pdf.set_font("Helvetica", "B", 12)
     pdf.cell(0, 8, "1. Indicadores Base de Flujo de Caja", ln=True)
+    pdf.ln(2)
     
+    # Cabecera de la tabla
+    pdf.set_fill_color(*COLOR_PRIMARY)
+    pdf.set_text_color(255, 255, 255)
+    pdf.set_font("Helvetica", "B", 9)
+    pdf.cell(95, 7, " Concepto Analizado", border=0, fill=True)
+    pdf.cell(95, 7, " Valor Declarado / Estado", border=0, fill=True, ln=True)
+    
+    # Filas de datos ordenadas
     datos_tabla = [
-        ["Entidad Laboral Declarada:", f"{du['nombre_empresa']} (Antigüedad: {du['antiguedad_trabajo']} años)"],
-        ["Ingresos Líquidos Mensuales:", f"{du['ingresos_mensuales']:,} EUR/mes"],
-        ["Capacidad de Ahorro Neto:", f"{du['ahorro_mensual_total']:,} EUR/mes (Tasa: {tasa_ahorro_aux:.1f}%)"],
-        ["Colchón de Contingencia Real:", f"{du['capital_inicial']:,} EUR ({meses_cobertura:.1f} meses de cobertura - {estado_seguridad})"]
+        ["Entidad Laboral Declarada:", f" {du['nombre_empresa']} (Antigüedad: {du['antiguedad_trabajo']} años)"],
+        ["Ingresos Líquidos Mensuales:", f" {du['ingresos_mensuales']:,} EUR/mes (Prorrateado con extras)"],
+        ["Capacidad de Ahorro Neto:", f" {du['ahorro_mensual_total']:,} EUR/mes (Tasa: {tasa_ahorro_aux:.1f}%)"],
+        ["Colchón de Contingencia Real:", f" {du['capital_inicial']:,} EUR ({meses_cobertura:.1f} meses - {estado_seguridad})"]
     ]
     
-    for fila in datos_tabla:
-        pdf.set_font("Helvetica", "B", 9)
-        pdf.cell(60, 6, fila[0], border="B")
-        pdf.set_font("Helvetica", "", 9)
-        pdf.cell(130, 6, fila[1], border="B", ln=True)
-    pdf.ln(6)
+    pdf.set_text_color(*COLOR_TEXT)
+    pdf.set_font("Helvetica", "", 9)
+    alternar_color = False
     
+    for fila in datos_tabla:
+        if alternar_color:
+            pdf.set_fill_color(*COLOR_BG_TABLE)
+        else:
+            pdf.set_fill_color(255, 255, 255)
+            
+        pdf.cell(95, 7, fila[0].encode('latin-1', 'ignore').decode('latin-1'), border="B", fill=True)
+        pdf.cell(95, 7, fila[1].encode('latin-1', 'ignore').decode('latin-1'), border="B", fill=True, ln=True)
+        alternar_color = not alternar_color
+    pdf.ln(8)
+    
+    # --- SECCIÓN 2: ASSET ALLOCATION (CON TRUCO DE CONTROL) ---
     pdf.set_text_color(*COLOR_PRIMARY)
     pdf.set_font("Helvetica", "B", 12)
     pdf.cell(0, 8, "2. Distribución y Asignación de Activos (Asset Allocation)", ln=True)
     pdf.ln(2)
     
+    grafico_renderizado = False
     try:
         from PIL import Image
-        img_pie_bytes = fig_pie.to_image(format="png", width=650, height=300, scale=2)
+        # Incrementamos resolución para evitar que se vea pixelado en el papel
+        img_pie_bytes = fig_pie.to_image(format="png", width=700, height=320, scale=2)
         img_pie_pil = Image.open(io.BytesIO(img_pie_bytes))
-        pdf.image(img_pie_pil, x=20, y=pdf.get_y(), w=170)
-        pdf.ln(82)  
-    except Exception as e:
-        pdf.ln(4)
+        pdf.image(img_pie_pil, x=15, y=pdf.get_y(), w=180)
+        pdf.ln(85)
+        grafico_renderizado = True
+    except Exception:
+        pass
+        
+    if not grafico_renderizado:
+        # Fallback de seguridad: Si el gráfico falla, ponemos un desglose de texto limpio para no dejar el hueco
+        pdf.set_font("Helvetica", "I", 9)
+        pdf.cell(0, 6, "Desglose de cartera:", ln=True)
+        pdf.set_font("Helvetica", "", 9)
+        for activo, valor in dict_distribucion_activos.items():
+            pdf.cell(100, 5, f"- {activo}:", border=0)
+            pdf.cell(0, 5, f"{valor:,} EUR", border=0, ln=True)
+        pdf.ln(6)
 
+    # --- NUEVA PÁGINA PARA LA EVOLUCIÓN E IA ---
     pdf.add_page()
     
     if fig_lineas is not None:
         pdf.set_text_color(*COLOR_PRIMARY)
         pdf.set_font("Helvetica", "B", 12)
-        pdf.cell(0, 8, f"3. Evolución del Capital Proyectado a {du['anos_proyeccion']} años vista", ln=True)
+        pdf.cell(0, 8, f"3. Evolución del Capital Proyectado a {du['anos_proyeccion']} años", ln=True)
         pdf.ln(2)
         
         try:
             from PIL import Image
-            img_lines_bytes = fig_lineas.to_image(format="png", width=650, height=300, scale=2)
+            img_lines_bytes = fig_lineas.to_image(format="png", width=700, height=320, scale=2)
             img_lines_pil = Image.open(io.BytesIO(img_lines_bytes))
-            pdf.image(img_lines_pil, x=20, y=pdf.get_y(), w=170)
-            pdf.ln(82)
-        except Exception as e:
+            pdf.image(img_lines_pil, x=15, y=pdf.get_y(), w=180)
+            pdf.ln(85)
+        except Exception:
             pdf.ln(4)
             
+    # --- SECCIÓN 4: DICTAMEN DE LA IA (DINÁMICO) ---
     pdf.set_text_color(*COLOR_PRIMARY)
     pdf.set_font("Helvetica", "B", 12)
-    pdf.cell(0, 8, "4. Dictamen de Previsión Estratégica", ln=True)
+    pdf.cell(0, 8, "4. Dictamen Avanzado y Auditoría del Consultor IA", ln=True)
+    pdf.ln(2)
     
-    pdf.set_font("Helvetica", "", 10)
+    pdf.set_font("Helvetica", "", 9.5)
     pdf.set_text_color(*COLOR_TEXT)
     
-    deuda_total_calc = du['capital_pendiente'] + total_pendiente_deudas_extra
-    conclusion_txt = (
-        f"Evaluación final del escenario patrimonial: Con un Objetivo de Independencia Financiera establecido en "
-        f"{num_libertad:,.0f} EUR, el perfil actual presenta una tasa de ahorro del {tasa_ahorro_aux:.1f}%. "
-        f"La carga total de pasivos reconocidos asciende a {deuda_total_calc:,.0f} EUR. El motor de simulación "
-        f"recomienda optimizar el arbitraje de tipos de interés frente a la inflación estimada del "
-        f"{du['inflacion_anual']}%, canalizando los excedentes mensuales de forma diversificada hacia los "
-        f"vehículos indexados de inversión de manera eficiente y proactiva."
-    )
-    pdf.multi_cell(0, 5, conclusion_txt)
+    # Si el usuario ya ha generado la auditoría con el botón de la IA, usamos ese texto.
+    # Si no la ha solicitado aún, usamos un texto de contingencia corporativo impecable.
+    dictamen_ia = st.session_state.get("auditoria_estatica", "")
     
-    pdf_out = pdf.output()
-    if isinstance(pdf_out, str):
-        return pdf_out.encode("latin-1")
-    return bytes(pdf_out)
+    if dictamen_ia:
+        # Limpieza rápida de Markdown para evitar que rompa FPDF
+        texto_limpio = dictamen_ia.replace("**", "").replace("###", "").replace("*", "-")
+        pdf.multi_cell(0, 5, texto_limpio.encode('latin-1', 'ignore').decode('latin-1'))
+    else:
+        deuda_total_calc = du['capital_pendiente'] + total_pendiente_deudas_extra
+        texto_defecto = (
+            f"EVALUACIÓN ESTRATÉGICA PRELIMINAR: Con un Objetivo de Independencia Financiera "
+            f"establecido de forma matemática en {num_libertad:,.0f} EUR, el perfil analizado presenta "
+            f"una estructura líquida de {du['capital_inicial']:,} EUR frente a una deuda global consolidada "
+            f"de {deuda_total_calc:,.0f} EUR. Se aconseja al analista de riesgos verificar los flujos recurrentes "
+            f"y ejecutar el motor de auditoría inteligente en la interfaz de la aplicación para obtener el "
+            f"desglose técnico detallado en cuatro secciones."
+        )
+        pdf.multi_cell(0, 5, texto_defecto.encode('latin-1', 'ignore').decode('latin-1'))
+        
+    # --- PIE DE PÁGINA DE CONFIDENCIALIDAD ---
+    pdf.set_y(-15)
+    pdf.set_font("Helvetica", "I", 7)
+    pdf.set_text_color(150, 150, 150)
+    pdf.cell(0, 5, "DOCUMENTO ALTAMENTE CONFIDENCIAL - EMITIDO MEDIANTE SISTEMA DE EVALUACIÓN PATRIMONIAL MOVANA PRO", align="C")
+    
+    return bytes(pdf.output())
 
 
 # ==========================================

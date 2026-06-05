@@ -591,88 +591,20 @@ with tab_inversion:
         })
         guardar_automatico()  # Asegúrate de que esta línea esté si usas autoguardado
         st.rerun()
-# ----- PESTAÑA 3: RENTABILIDAD E INVERSION -----
+# ----- PESTANA 3: RENTABILIDAD E INVERSION -----
 with tab_inversion:
-    # UN ÚNICO ENCABEZADO Y UN ÚNICO BOTÓN GENERAL
     st.subheader("💼 Matriz Patrimonial y Asignación de Activos", anchor=False)
     
-    if st.button("➕ Vincular Nuevo Activo/Inversión", key="btn_vincular_activo_unico"):
+    # Un solo botón, y le añadimos un 'key' único por seguridad
+    if st.button("➕ Vincular Nuevo Activo/Inversión", key="btn_vincular_activo_nuevo"):
         du["inversiones"].append({
             "nombre": f"Nuevo Activo {len(du['inversiones']) + 1}",
-            "tipo": "Interés Compuesto (ETFs / Fondos)",
-            "valor_actual": 0.0, 
-            "aportacion_mensual": 0.0, 
-            "interes_anual": 7.0,
-            "precio_compra": 0.0, 
-            "alquiler_mensual": 0.0, 
-            "financiacion_inmueble": 0.0,
-            "valor_final": 0.0
+            "valor_actual": 0.0,       # Crucial para que no te vuelva a dar el KeyError
+            "tipo": "Efectivo",
+            "rentabilidad_anual": 0.0
         })
-        guardar_automatico()
+        guardar_automatico()  # Asegúrate de que esta línea esté si usas autoguardado
         st.rerun()
-
-    # Bucle limpio para renderizar y editar cada activo guardado
-    for idx, inv in enumerate(du.get("inversiones", [])):
-        with st.container(border=True):
-            col_inv1, col_inv2, col_inv3, col_inv4 = st.columns([2, 3, 3, 1])
-            with col_inv1:
-                inv["nombre"] = st.text_input("Nombre del Activo:", value=inv["nombre"], key=f"inv_nom_{idx}", on_change=guardar_automatico)
-            with col_inv2:
-                inv["tipo"] = st.selectbox(
-                    "Naturaleza del Activo:", 
-                    ["Interés Compuesto (ETFs / Fondos)", "Rentabilidad Inmobiliaria (Ladrillo)", "Activos Estáticos / Otros"], 
-                    index=["Interés Compuesto (ETFs / Fondos)", "Rentabilidad Inmobiliaria (Ladrillo)", "Activos Estáticos / Otros"].index(inv["tipo"] if inv["tipo"] in ["Interés Compuesto (ETFs / Fondos)", "Rentabilidad Inmobiliaria (Ladrillo)", "Activos Estáticos / Otros"] else "Interés Compuesto (ETFs / Fondos)"), 
-                    key=f"inv_tipo_{idx}", 
-                    on_change=st.rerun
-                )
-            
-            with col_inv3:
-                if inv["tipo"] == "Interés Compuesto (ETFs / Fondos)":
-                    inv["valor_actual"] = st.number_input("Capital Actual (€):", value=float(inv.get("valor_actual", 0.0)), key=f"inv_val_{idx}", on_change=guardar_automatico)
-                    inv["aportacion_mensual"] = st.number_input("Aportación Mensual (€):", value=float(inv.get("aportacion_mensual", 0.0)), key=f"inv_apo_{idx}", on_change=guardar_automatico)
-                    inv["interes_anual"] = st.number_input("Interés Anual Estimado (%):", value=float(inv.get("interes_anual", 7.0)), key=f"inv_int_{idx}", on_change=guardar_automatico)
-                elif inv["tipo"] == "Rentabilidad Inmobiliaria (Ladrillo)":
-                    inv["precio_compra"] = st.number_input("Precio de Compra (€):", value=float(inv.get("precio_compra", 0.0)), key=f"inv_pre_{idx}", on_change=guardar_automatico)
-                    inv["alquiler_mensual"] = st.number_input("Alquiler Mensual percibido (€):", value=float(inv.get("alquiler_mensual", 0.0)), key=f"inv_alq_{idx}", on_change=guardar_automatico)
-                    inv["financiacion_inmueble"] = st.number_input("Hipoteca pendiente sobre este inmueble (€):", value=float(inv.get("financiacion_inmueble", 0.0)), key=f"inv_fin_{idx}", on_change=guardar_automatico)
-                else:
-                    inv["valor_final"] = st.number_input("Valor de Liquidación Estático (€):", value=float(inv.get("valor_final", 0.0)), key=f"inv_fin_est_{idx}", on_change=guardar_automatico)
-            
-            with col_inv4:
-                st.markdown("<br>", unsafe_allow_html=True)
-                if st.button("❌", key=f"inv_del_{idx}"):
-                    du["inversiones"].pop(idx)
-                    guardar_automatico()
-                    st.rerun()
-
-    # Bucle para renderizar y editar cada activo guardado
-    for idx, inv in enumerate(du.get("inversiones", [])):
-        with st.container(border=True):
-            col_inv1, col_inv2, col_inv3, col_inv4 = st.columns([2, 3, 3, 1])
-            with col_inv1:
-                inv["nombre"] = st.text_input("Nombre del Activo:", value=inv["nombre"], key=f"inv_nom_{idx}", on_change=guardar_automatico)
-            with col_inv2:
-                inv["tipo"] = st.selectbox("Naturaleza del Activo:", ["Interés Compuesto (ETFs / Fondos)", "Rentabilidad Inmobiliaria (Ladrillo)", "Activos Estáticos / Otros"], index=["Interés Compuesto (ETFs / Fondos)", "Rentabilidad Inmobiliaria (Ladrillo)", "Activos Estáticos / Otros"].index(inv["tipo"] if inv["tipo"] in ["Interés Compuesto (ETFs / Fondos)", "Rentabilidad Inmobiliaria (Ladrillo)", "Activos Estáticos / Otros"] else "Interés Compuesto (ETFs / Fondos)"), key=f"inv_tipo_{idx}", on_change=st.rerun)
-            
-            with col_inv3:
-                if inv["tipo"] == "Interés Compuesto (ETFs / Fondos)":
-                    inv["valor_actual"] = st.number_input("Capital Actual (€):", value=float(inv["valor_actual"]), key=f"inv_val_{idx}", on_change=guardar_automatico)
-                    inv["aportacion_mensual"] = st.number_input("Aportación Mensual (€):", value=float(inv["aportacion_mensual"]), key=f"inv_apo_{idx}", on_change=guardar_automatico)
-                    inv["interes_anual"] = st.number_input("Interés Anual Estimado (%):", value=float(inv["interes_anual"]), key=f"inv_int_{idx}", on_change=guardar_automatico)
-                elif inv["tipo"] == "Rentabilidad Inmobiliaria (Ladrillo)":
-                    inv["precio_compra"] = st.number_input("Precio de Compra (€):", value=float(inv["precio_compra"]), key=f"inv_pre_{idx}", on_change=guardar_automatico)
-                    inv["alquiler_mensual"] = st.number_input("Alquiler Mensual percibido (€):", value=float(inv["alquiler_mensual"]), key=f"inv_alq_{idx}", on_change=guardar_automatico)
-                    inv["financiacion_inmueble"] = st.number_input("Hipoteca pendiente sobre este inmueble (€):", value=float(inv["financiacion_inmueble"]), key=f"inv_fin_{idx}", on_change=guardar_automatico)
-                else:
-                    inv["valor_final"] = st.number_input("Valor de Liquidación Estático (€):", value=float(inv["valor_final"]), key=f"inv_fin_est_{idx}", on_change=guardar_automatico)
-            
-            with col_inv4:
-                st.markdown("<br>", unsafe_allow_html=True)
-                if st.button("❌", key=f"inv_del_{idx}"):
-                    du["inversiones"].pop(idx)
-                    guardar_automatico()
-                    st.rerun()
-
 # ----- PESTAÑA 4: CONSULTOR HIPOTECARIO -----
 with tab_hipoteca:
     st.subheader("🏠 Consultor y Optimizador de Carga Hipotecaria", anchor=False)

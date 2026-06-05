@@ -577,9 +577,13 @@ with tab_presupuesto:
                     guardar_automatico()
                     st.rerun()
 
-# ----- PESTAÑA 3: RENTABILIDAD E INVERSIÓN -----
+# ----- PESTANA 3: RENTABILIDAD E INVERSION -----
 with tab_inversion:
     st.subheader("💼 Matriz Patrimonial y Asignación de Activos", anchor=False)
     if st.button("➕ Vincular Nuevo Activo/Inversión"):
         du["inversiones"].append({
-            "nombre": f"Nuevo Activo {len(du['inversiones']) +
+           "nombre": f"Nuevo Activo {len(du['inversiones']) + 1}",
+           "valor": 0.0,
+           "tipo": "Efectivo",
+           "rentabilidad_anual": 0.0
+})

@@ -672,6 +672,24 @@ with tab_ia:
 with st.sidebar:
     st.markdown("---")
     st.markdown("### 📥 Exportación")
+    
+    # 👇 PEGA ESTE BLOQUE DE SIMULACIÓN AQUÍ ABAJO 👇
+    with st.expander("🛠️ Banco de Pruebas (Simulación)", expanded=True):
+        if st.button("Inyectar Dictamen IA de Élite", type="secondary"):
+            st.session_state["auditoria_estatica"] = """### 1. ANÁLISIS DE RESILIENCIA Y LIQUIDEZ
+El perfil analizado presenta una sólida posición de liquidez inmediata con un colchón de contingencia que mitiga significativamente el riesgo de estrés financiero ante perturbaciones operativas. La métrica de cobertura es óptima bajo estándares de scoring bancario.
+
+### 2. ARBITRAJE DE DEUDA E INFLACIÓN
+La carga hipotecaria estructurada al 3.20% actúa como un apalancamiento eficiente frente a la inflación real del 2.5%. El coste de oportunidad desaconseja la amortización anticipada de capital; se dictamina priorizar la canalización del superávit hacia vehículos indexados con retornos asimétricos.
+
+### 3. DIAGNÓSTICO DE ASSET ALLOCATION
+Se observa una concentración latente en activos inmobiliarios (ladrillo). Para alcanzar un entorno de preservación patrimonial premium, se sugiere diversificar los flujos mensuales hacia renta variable global para optimizar la liquidez del balance consolidado.
+
+### 4. CONCLUSIÓN INSTITUCIONAL
+Estructura financiera con calificación apta para la tramitación de líneas de crédito o financiación corporativa avanzada. La relación deuda/ingresos actual se mantiene en márgenes de seguridad institucional."""
+            st.success("¡Dictamen cargado! Dale al botón de abajo")
+    # 👆 HASTA AQUÍ 👆
+
     try:
         pdf_bytes = generar_pdf_premium_bytes()
         st.download_button(

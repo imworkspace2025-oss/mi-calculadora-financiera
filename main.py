@@ -4,6 +4,8 @@ import pandas as pd
 import math
 import json
 import plotly.express as px
+from fpdf import FPDF
+import io
 
 # 1. Configuración de pantalla premium y limpia
 st.set_page_config(page_title="Cuadro de Mandos Financiero Pro", layout="wide")
@@ -19,6 +21,7 @@ st.markdown("""
     }
     </style>
     """, unsafe_allow_html=True)
+
 from supabase import create_client
 
 # ----------------------------------------------------------------------
@@ -456,14 +459,11 @@ with tab_libertad:
 # ==========================================
 # 📥 MOTOR DE EXPORTACIÓN PDF PREMIUM (SIDEBAR)
 # ==========================================
-from fpdf import FPDF
-import io
-
 def generar_pdf_premium_bytes():
     # 1. Recopilación de textos dinámicos internos
     txt_activos = ""
-for i in du.get("inversiones", []):  # <--- Corregido a "inversiones"
-    txt_activos += f"- {i['nombre']}: {i['valor_actual']} EUR\n"
+    for i in du.get("inversiones", []):
+        txt_activos += f"- {i['nombre']}: {i['valor_actual']} EUR\n"
 
     txt_deudas_pdf = ""
     for d in du.get("deudas", []):
@@ -584,108 +584,74 @@ for i in du.get("inversiones", []):  # <--- Corregido a "inversiones"
         f"La carga total de pasivos reconocidos asciende a {deuda_total_calc:,.0f} EUR. El motor de simulación "
         f"recomienda optimizar el arbitraje de tipos de interés frente a la inflación estimada del "
         f"{du['inflacion_anual']}%, canalizando los excedentes mensuales de forma diversificada hacia los "
-        f"vehículos indexados declarados para batir de forma consistente el escenario real corregido."
+        f"vehículos indexados de inversión de manera eficiente y proactiva."
     )
-pdf.multi_cell(0, 5, conclusion_txt.replace("•", "-"))
-pdf.ln(12)
-pdf.set_font("Helvetica", "B", 9)
-pdf.set_text_color(*COLOR_SECONDARY)
-pdf.cell(0, 4, "MOVANA ANALYTICS ENGINE", ln=True, align="R")
-pdf.set_font("Helvetica", "", 8)
-pdf.cell(0, 4, "Documento validado digitalmente por el Terminal Patrimonial Pro.", ln=True, align="R")
+    pdf.multi_cell(0, 5, conclusion_txt)
+    
+    # Retorno blindado compatible tanto con FPDF clásico como con FPDF2 en Streamlit Cloud
+    pdf_out = pdf.output()
+    if isinstance(pdf_out, str):
+        return pdf_out.encode("latin-1")
+    return bytes(pdf_out)
 
-return bytes(pdf.output())
 
-# ----- PESTAÑA 6: IA CHAT Y DICTAMEN -----
+# ----- PESTAÑA 6: DICTAMEN E IA CHAT -----
 with tab_ia:
-    # 1. Generamos las variables de texto para que la IA las pueda leer:
-    du = st.session_state.datos_usuario
-    txt_activos = ""
-    for i in du.get("inversiones", []):
-        txt_activos += f"- {i['nombre']} ({i['tipo']}): {i['valor_actual']} EUR\n"
-        
-    txt_deudas = ""
-    for d in du.get("deudas", []):
-        txt_deudas += f"- {d['nombre']} ({d['tipo']}): Total: {d['pendiente']} EUR\n"
-
-    # >>> ¡CORRECCIÓN AQUÍ! Guardamos todo el bloque de texto dentro de una variable f-string:
-prompt_ia = f"""
-    - Liquidez y Emergencias: Colchon de {du['capital_initial']} EUR que cubre {meses_cobertura:.1f} meses de vida (Calificacion: {estado_seguridad}).
-    - Activos actuales:\n{txt_activos}
-    - Deudas y Pasivos:\n- Hipoteca: Debe {du['capital_pendiente']} EUR al {du['interes_anual_actual']}%.\n{txt_deudas}
-    - Perfil Laboral: Empleado en {du['nombre_empresa']} con {du['antiguedad_trabajo']} años de antiguedad.
-    - Objetivo Financiero: {num_libertad:.0f} EUR.
-
-    REGLAS DE CONVERSACIÓN:
-    1. Propon distribuciones en ETFs globales (MSCI World, S&P 500) o cuentas de alta remuneracion.
-    2. Analiza específicamente el impacto de sus deudas actuales y proximas sobre su capacidad de inversion.
-    3. Evalua su nivel de seguridad basandote en sus meses reales del Fondo de Emergencia.
-    4. Escribe en Markdown profesional sin usar emojis ni símbolos de euro (usa la palabra 'EUR') para evitar roturas de codificacion.
-    """
-
-col_btn, col_reset = st.columns([3, 1])
-with col_btn:
-    if st.button("🚀 Generar Auditoría Patrimonial Completa", use_container_width=True):
-            prompt_auditoria = f"""
-            {contexto_sistema}
-            Redacta un dictamen financiero macroeconomico inicial estructurado en 4 secciones claras:
-            1. Analisis del Fondo de Emergencia actual frente a su matriz de deudas (actuales y proximas).
-            2. Evaluacion del Asset Allocation frente a la inflacion de {du['inflacion_anual']}%.
-            3. Critica de la salud financiera global ante el sector bancario (Score de credito segun su empresa y antiguedad).
-            4. Recomendacion tactica personalizada para acelerar la meta de {num_libertad:.0f} EUR.
-            """
-            prompt_seguro = prompt_auditoria.replace("€", "EUR")
-            prompt_seguro = prompt_seguro.replace("$", "USD")
+    st.subheader("🤖 Dictamen Avanzado e Inteligencia Artificial", anchor=False)
+    
+    # 🚀 Botón Premium de descarga en maquetación de columnas limpia
+    col_btn, col_reset = st.columns([3, 1])
+    with col_btn:
+        try:
+            pdf_bytes = generar_pdf_premium_bytes()
+            st.download_button(
+                label="🚀 Generar Auditoría Patrimonial Completa (PDF)",
+                data=pdf_bytes,
+                file_name="Auditoria_Patrimonial_Movana.pdf",
+                mime="application/pdf",
+                use_container_width=True
+            )
+        except Exception as err:
+            st.error(f"Error preparando el motor PDF: {err}")
             
-            try:
-                genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-                model = genai.GenerativeModel('gemini-1.5-flash')
-                with st.spinner("Analizando con la IA..."):
-                    response = model.generate_content(prompt_seguro)
-                        st.session_state.auditoria_estatica = response.text
-                        st.rerun()
-                except Exception as e:
-                    st.error(f"Error al generar auditoría: {e}")
-        
-        with col_reset:
-            if st.button("🗑️ Limpiar Conversación", use_container_width=True):
-                st.session_state.historial_chat = []
-                st.session_state.auditoria_estatica = ""
-                st.rerun()
-
-        if st.session_state.auditoria_estatica:
-            st.markdown("<br>", unsafe_allow_html=True)
-            with st.container(border=True):
-                st.markdown("### 📋 Dictamen Financiero Estratégico Inicial")
-                st.markdown(st.session_state.auditoria_estatica)
-
-        st.markdown("---")
-        st.markdown("#### 💬 Copiloto de Consultas Tácticas en Tiempo Real")
-
-        for msg in st.session_state.historial_chat:
-            with st.chat_message(msg["role"]):
-                st.markdown(msg["content"])
-
-        if usuario_input := st.chat_input("Pregúntale a tu Asesor Patrimonial..."):
-            with st.chat_message("user"):
-                st.markdown(usuario_input)
-            st.session_state.historial_chat.append({"role": "user", "content": usuario_input})
-
-            historial_formateado = f"Auditoria Patrimonial Base:\n{st.session_state.auditoria_estatica}\n\n"
-            for m in st.session_state.historial_chat:
-                role_label = "Usuario" if m["role"] == "user" else "Asesor"
-                historial_formateado += f"\n{role_label}: {m['content']}\n"
-
-            prompt_completo = f"{contexto_sistema}\n\nHistorial:\n{historial_formateado}\nAsesor:"
-            prompt_seguro = prompt_completo.replace("€", "EUR").encode("latin-1", "ignore").decode("latin-1")
-
-            try:
-                genai.configure(api_key=st.session_state.api_key_guardada, transport='rest')
-                model = genai.GenerativeModel('gemini-2.5-flash')
-                with st.spinner("Analizando impactos..."):
-                    response = model.generate_content(prompt_seguro)
-                    respuesta_ia = response.text
-                    st.session_state.historial_chat.append({"role": "assistant", "content": respuesta_ia})
-                    st.rerun()
-            except Exception as e:
-                st.error(f"Error al conectar con el asesor de IA: {e}")
+    st.markdown("---")
+    st.markdown("### 💬 Consultor de Estrategia Patrimonial")
+    
+    # Lógica interactiva con la API Key guardada
+    if st.session_state.get("api_key_guardada"):
+        try:
+            genai.configure(api_key=st.session_state.api_key_guardada)
+            
+            if "mensajes_chat" not in st.session_state:
+                st.session_state.mensajes_chat = []
+                
+            for msg in st.session_state.mensajes_chat:
+                with st.chat_message(msg["role"]):
+                    st.write(msg["content"])
+                    
+            if prompt_usuario := st.chat_input("Plantea una consulta sobre optimización patrimonial..."):
+                with st.chat_message("user"):
+                    st.write(prompt_usuario)
+                st.session_state.mensajes_chat.append({"role": "user", "content": prompt_usuario})
+                
+                # Contextualización rica enviada al modelo de IA
+                contexto_patrimonial = (
+                    f"Actúa como un auditor patrimonial privado de élite. Datos actuales:\n"
+                    f"- Ingresos Netos: {ingresos_totales:.2f} EUR/mes\n"
+                    f"- Capacidad de Ahorro: {du['ahorro_mensual_total']} EUR/mes\n"
+                    f"- Colchón Liquidez: {du['capital_inicial']} EUR\n"
+                    f"- Pasivos/Deudas Consolidadas: {deuda_consolidada:.2f} EUR\n"
+                    f"Pregunta del inversor: {prompt_usuario}"
+                )
+                
+                model = genai.GenerativeModel("gemini-1.5-flash")
+                respuesta_ia = model.generate_content(contexto_patrimonial)
+                
+                with st.chat_message("assistant"):
+                    st.write(respuesta_ia.text)
+                st.session_state.mensajes_chat.append({"role": "assistant", "content": respuesta_ia.text})
+                
+        except Exception as e:
+            st.warning(f"El chat de IA está listo, esperando inicialización completa del modelo: {e}")
+    else:
+        st.info("💡 Consejo: Añade la variable `GEMINI_API_KEY` en los Secrets de tu panel de Streamlit para activar el consultor interactivo por voz y texto.")

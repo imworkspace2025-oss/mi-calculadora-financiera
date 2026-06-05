@@ -6,7 +6,12 @@ import json
 import plotly.express as px
 from fpdf import FPDF
 import io
-
+def formato_euro(valor):
+    """Formatea un número flotante al estilo europeo premium."""
+    try:
+        return f"{float(valor)::,.2f} €".replace(",", "X").replace(".", ",").replace("X", ".")
+    except (ValueError, TypeError):
+        return "0,00 €"
 # 1. Configuración de pantalla premium y limpia
 st.set_page_config(page_title="Cuadro de Mandos Financiero Pro", layout="wide")
 

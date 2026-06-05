@@ -605,12 +605,11 @@ with tab_presupuesto:
                     guardar_automatico()
                     st.rerun()
 
-# ----- PESTAÑA 3: RENTABILIDAD E INVERSION -----
+# ----- PESTAÑA 3: RENTABILIDAD E INVERSION (MÓDULO PREMIUM) -----
 with tab_inversion:
     st.subheader("💼 Matriz Patrimonial y Asignación de Activos", anchor=False)
     
-    # Cambiamos a una clave única blindada para que no choque con nada viejo
-    if st.button("➕ Vincular Nuevo Activo/Inversión", key="key_unico_boton_tab_inversion"):
+    if st.button("➕ Vincular Nuevo Activo/Inversión", key="btn_vincular_activo_final_premium"):
         du["inversiones"].append({
             "nombre": f"Nuevo Activo {len(du['inversiones']) + 1}",
             "tipo": "Interés Compuesto (ETFs / Fondos)",
@@ -620,42 +619,85 @@ with tab_inversion:
             "precio_compra": 0.0, 
             "alquiler_mensual": 0.0, 
             "financiacion_inmueble": 0.0,
+            "reduccion_fiscal": "60% (Vivienda Habitual)",
             "valor_final": 0.0
         })
         guardar_automatico()
         st.rerun()
 
-    # Bucle para renderizar tus tarjetas
+    # Renderizado y Análisis de Activos
     for idx, inv in enumerate(du.get("inversiones", [])):
         with st.container(border=True):
-            col_inv1, col_inv2, col_inv3, col_inv4 = st.columns([2, 3, 3, 1])
+            col_inv1, col_inv2, col_inv3 = st.columns([2, 3, 4])
+            
             with col_inv1:
-                inv["nombre"] = st.text_input("Nombre del Activo:", value=inv["nombre"], key=f"inv_nom_{idx}", on_change=guardar_automatico)
-            with col_inv2:
+                inv["nombre"] = st.text_input("Identificador del Activo:", value=inv["nombre"], key=f"inv_nom_{idx}", on_change=guardar_automatico)
                 inv["tipo"] = st.selectbox(
-                    "Naturaleza del Activo:", 
+                    "Naturaleza:", 
                     ["Interés Compuesto (ETFs / Fondos)", "Rentabilidad Inmobiliaria (Ladrillo)", "Activos Estáticos / Otros"], 
                     index=["Interés Compuesto (ETFs / Fondos)", "Rentabilidad Inmobiliaria (Ladrillo)", "Activos Estáticos / Otros"].index(inv["tipo"] if inv["tipo"] in ["Interés Compuesto (ETFs / Fondos)", "Rentabilidad Inmobiliaria (Ladrillo)", "Activos Estáticos / Otros"] else "Interés Compuesto (ETFs / Fondos)"), 
                     key=f"inv_tipo_{idx}", 
                     on_change=st.rerun
                 )
-            with col_inv3:
+            
+            with col_inv2:
                 if inv["tipo"] == "Interés Compuesto (ETFs / Fondos)":
                     inv["valor_actual"] = st.number_input("Capital Actual (€):", value=float(inv.get("valor_actual", 0.0)), key=f"inv_val_{idx}", on_change=guardar_automatico)
                     inv["aportacion_mensual"] = st.number_input("Aportación Mensual (€):", value=float(inv.get("aportacion_mensual", 0.0)), key=f"inv_apo_{idx}", on_change=guardar_automatico)
-                    inv["interes_anual"] = st.number_input("Interés Anual Estimado (%):", value=float(inv.get("interes_anual", 7.0)), key=f"inv_int_{idx}", on_change=guardar_automatico)
+                    inv["interes_anual"] = st.number_input("Interés Estimado (%):", value=float(inv.get("interes_anual", 7.0)), key=f"inv_int_{idx}", on_change=guardar_automatico)
+                
                 elif inv["tipo"] == "Rentabilidad Inmobiliaria (Ladrillo)":
-                    inv["precio_compra"] = st.number_input("Precio de Compra (€):", value=float(inv.get("precio_compra", 0.0)), key=f"inv_pre_{idx}", on_change=guardar_automatico)
-                    inv["alquiler_mensual"] = st.number_input("Alquiler Mensual percibido (€):", value=float(inv.get("alquiler_mensual", 0.0)), key=f"inv_alq_{idx}", on_change=guardar_automatico)
-                    inv["financiacion_inmueble"] = st.number_input("Hipoteca pendiente sobre este inmueble (€):", value=float(inv.get("financiacion_inmueble", 0.0)), key=f"inv_fin_{idx}", on_change=guardar_automatico)
+                    inv["precio_compra"] = st.number_input("Precio de Compra/Valoración (€):", value=float(inv.get("precio_compra", 0.0)), key=f"inv_pre_{idx}", on_change=guardar_automatico)
+                    inv["alquiler_mensual"] = st.number_input("Alquiler Mensual Bruto (€):", value=float(inv.get("alquiler_mensual", 0.0)), key=f"inv_alq_{idx}", on_change=guardar_automatico)
+                    inv["financiacion_inmueble"] = st.number_input("Hipoteca Pendiente (€):", value=float(inv.get("financiacion_inmueble", 0.0)), key=f"inv_fin_{idx}", on_change=guardar_automatico)
+                    inv["reduccion_fiscal"] = st.selectbox("Bonificación Fiscal:", ["60% (Vivienda Habitual)", "50% (Zona Tensionada)", "Ninguna (Vacacional/Local)"], key=f"inv_fis_{idx}", on_change=guardar_automatico)
+                
                 else:
                     inv["valor_final"] = st.number_input("Valor de Liquidación Estático (€):", value=float(inv.get("valor_final", 0.0)), key=f"inv_fin_est_{idx}", on_change=guardar_automatico)
-            with col_inv4:
-                st.markdown("<br>", unsafe_allow_html=True)
-                if st.button("❌", key=f"inv_del_{idx}"):
+            
+            # BLOQUE PREMIUM: Métricas Avanzadas en Tiempo Real
+            with col_inv3:
+                st.markdown("<p style='color:#888; font-size:13px; margin-bottom:2px;'>ANÁLISIS DE RENDIMIENTO</p>", unsafe_allow_html=True)
+                
+                if inv["tipo"] == "Rentabilidad Inmobiliaria (Ladrillo)":
+                    precio = float(inv.get("precio_compra", 0.0))
+                    deuda = float(inv.get("financiacion_inmueble", 0.0))
+                    alquiler_anual = float(inv.get("alquiler_mensual", 0.0)) * 12
+                    capital_propio = precio - deuda
+                    
+                    # Cálculos Quirúrgicos
+                    rend_bruta = (alquiler_anual / precio * 100) if precio > 0 else 0.0
+                    apalancamiento = (deuda / precio * 100) if precio > 0 else 0.0
+                    
+                    # ROE (Return on Equity) estimado estimando un 2% de gastos anuales sobre precio por comunidad/seguros/Ibi
+                    gastos_estimados = precio * 0.02
+                    roe = ((alquiler_anual - gastos_estimados) / capital_propio * 100) if capital_propio > 0 else 0.0
+                    
+                    # UI Premium tipo Dashboard de Inversión
+                    st.metric("ROE (Rentabilidad sobre Capital Propio)", f"{roe:.2f} %")
+                    
+                    sub_col1, sub_col2 = st.columns(2)
+                    sub_col1.metric("Rentabilidad Bruta", f"{rend_bruta:.2f} %")
+                    sub_col2.metric("Apalancamiento Bancario", f"{apalancamiento:.1f} %")
+                    
+                elif inv["tipo"] == "Interés Compuesto (ETFs / Fondos)":
+                    cap_actual = float(inv.get("valor_actual", 0.0))
+                    interes = float(inv.get("interes_anual", 7.0))
+                    rendimiento_estimado_año = cap_actual * (interes / 100)
+                    
+                    st.metric("Crecimiento Patrimonial Anual", formato_euro(rendimiento_estimado_año))
+                    st.caption(f"Efecto compuesto calculado a una tasa del {interes}% anual.")
+                
+                else:
+                    st.metric("Patrimonio Neto Estático", formato_euro(inv.get("valor_final", 0.0)))
+                
+                # Botón de borrado elegante alineado a la derecha
+                st.markdown("<div style='text-align: right; margin-top: 10px;'>", unsafe_allow_html=True)
+                if st.button("🗑️ Eliminar Activo", key=f"inv_del_{idx}"):
                     du["inversiones"].pop(idx)
                     guardar_automatico()
                     st.rerun()
+                st.markdown("</div>", unsafe_allow_html=True)
 # ----- PESTAÑA 4: CONSULTOR HIPOTECARIO -----
 with tab_hipoteca:
     st.subheader("🏠 Consultor y Optimizador de Carga Hipotecaria", anchor=False)

@@ -617,12 +617,12 @@ with tab_hipotecario:
                 total_intereses = (cuota * meses) - cap if (cuota * meses) > cap else 0.0
                 ltv = (cap / val_activo * 100) if val_activo > 0 else 0.0
                 
-                # Despliegue visual tipo Dashboard de Inversión
-                st.metric("Cuota Mensual Estimada", formato_euro(cuota))
+                # Despliegue visual tipo Dashboard de Inversión con formateo local directo
+                st.metric("Cuota Mensual Estimada", f"{cuota:,.2f} €".replace(",", "X").replace(".", ",").replace("X", "."))
                 
                 sub_c1, sub_c2 = st.columns(2)
                 sub_c1.metric("LTV (Deuda / Activo)", f"{ltv:.1f} %")
-                sub_c2.metric("Intereses Pendientes", formato_euro(total_intereses))
+                sub_c2.metric("Intereses Pendientes", f"{total_intereses:,.2f} €".replace(",", "X").replace(".", ",").replace("X", "."))
                 
                 # Semáforo de riesgo financiero según el Loan-to-Value (LTV)
                 if ltv > 80:

@@ -170,13 +170,11 @@ def guardar_automatico():
 # ==========================================
 st.sidebar.title("⚙️ Configuración Global")
 
-# Conectamos automáticamente tu código con la clave guardada en los Secrets de Streamlit
 st.session_state.api_key_guardada = st.secrets.get("GEMINI_API_KEY", "")
 
 with st.sidebar.expander("🔑 Inteligencia Artificial (Gemini)", expanded=False):
     if st.session_state.api_key_guardada:
         st.success("✅ API Key vinculada y activa")
-        st.text_input("Clave protegida en el servidor:", value="••••••••••••••••", disabled=True, help="Tu clave está a salvo en los Secrets de Streamlit y ya está alimentando a la IA.")
     else:
         st.error("❌ No se encontró la clave GEMINI_API_KEY en Secrets.")
 
@@ -201,7 +199,7 @@ with st.sidebar.expander("🛡️ Simulador de Entorno Económico", expanded=Fal
 
 
 # ==========================================
-# 🧮 MOTOR MATEMÁTICO GLOBAL (FUERA DE LAS PESTAÑAS)
+# 🧮 MOTOR MATEMÁTICO GLOBAL Y GRÁFICOS
 # ==========================================
 ingreso_extra_prorrateado = du["dinero_extra_anual"] / 12
 ingresos_totales = du["ingresos_mensuales"] + ingreso_extra_prorrateado
@@ -217,7 +215,6 @@ datos_grafica_nominal = {"Año": cronologia_anos}
 datos_grafica_real = {"Año": cronologia_anos}
 dict_distribucion_activos = {"Efectivo": du["capital_inicial"]}
 
-# Bucle global para calcular proyecciones financieras complejas sin importar la pestaña
 for idx, inv in enumerate(du.get("inversiones", [])):
     proyeccion_nominal, proyeccion_real = [], []
     
@@ -254,13 +251,11 @@ for idx, inv in enumerate(du.get("inversiones", [])):
     datos_grafica_nominal[inv["nombre"]] = proyeccion_nominal
     datos_grafica_real[inv["nombre"]] = proyeccion_real
 
-# Inicializar distribución de activos con los valores calculados/actualizados
 for item in du.get("inversiones", []):
     dict_distribucion_activos[item["nombre"]] = item["valor_actual"]
 
 patrimonio_neto_global = du["capital_inicial"] + patrimonio_inversiones_total
 
-# Cálculos de la hipoteca globales
 tasa_mensual = (du["interes_anual_actual"] / 100) / 12
 coste_mensual_seguros = du["seguros_anuales_banco"] / 12
 cuota_financiera_verdadera = du["cuota_mensual_actual"] + coste_mensual_seguros
@@ -272,7 +267,6 @@ if du["cuota_mensual_actual"] > (du["capital_pendiente"] * tasa_mensual):
 else:
     anos_contrato_restantes, intereses_totales_banco = 0, 0
 
-# Configuración del Fondo de Emergencia Global
 gastos_mensuales_totales = du["cuota_mensual_actual"] + total_cuotas_deudas_extra + gastos_mensuales_vivos
 meses_cobertura = du["capital_inicial"] / gastos_mensuales_totales if gastos_mensuales_totales > 0 else 0
 
@@ -280,6 +274,131 @@ if meses_cobertura < 3:
     estado_seguridad = "Bajo Mínimos"
 else:
     estado_seguridad = "Saludable / Estándar" if meses_cobertura <= 6 else "Excelente"
+
+# --- GENERACIÓN GLOBAL DE GRÁFICOS (Para que los lea el PDF y las Tabs) ---
+df_pie = pd.DataFrame({"Activo": list(dict_distribucion_activos.keys()), "Valor (€)": list(dict_distribucion_activos.values())})
+fig_pie = px.pie(df_pie, values="Valor (€)", names="Activo", hole=0.4, title="Asset Allocation Actual")
+fig_pie.update_layout(height=250, margin=dict(t=30, b=10, l=10, r=10))
+
+fig_lineas = None
+if len(du.get("inversiones", [])) > 0:
+    df_prep_nom = pd.DataFrame(datos_grafica_nominal).set_index("Año")
+    df_total_nom = pd.DataFrame({"Valor Nominal": df_prep_nom.sum(axis=1)})
+    df_prep_real = pd.DataFrame(datos_grafica_real).set_index("Año")
+    df_total_real = pd.DataFrame({"Valor Real Corregido": df_prep_real.sum(axis=1)})
+    df_melted = df_total_nom.join(df_total_real).reset_index().melt(id_vars=["Año"], var_name="Métrica", value_name="Capital (€)")
+    fig_lineas = px.line(df_melted, x="Año", y="Capital (€)", color="Métrica", title="Evolución del Patrimonio Bajo Inflación")
+
+
+# ==========================================
+# 📥 FUNCIÓN EXPORTACIÓN PDF
+# ==========================================
+def generar_pdf_premium_bytes():
+    tasa_ahorro_aux = (du["ahorro_mensual_total"] / ingresos_totales) * 100 if ingresos_totales > 0 else 0
+
+    pdf = FPDF(orientation="P", unit="mm", format="A4")
+    pdf.set_auto_page_break(auto=True, margin=20)
+    pdf.add_page()
+    
+    COLOR_PRIMARY = (26, 36, 43)    
+    COLOR_SECONDARY = (70, 100, 120) 
+    COLOR_TEXT = (50, 50, 50)       
+    
+    pdf.set_text_color(*COLOR_PRIMARY)
+    pdf.set_font("Helvetica", "B", 22)
+    pdf.cell(0, 12, "MOVANA PRO | REPORTING PATRIMONIAL", ln=True, align="C")
+    
+    pdf.set_text_color(*COLOR_SECONDARY)
+    pdf.set_font("Helvetica", "I", 10)
+    pdf.cell(0, 6, "Dossier Ejecutivo de Planificación Financiera", ln=True, align="C")
+    pdf.ln(4)
+    
+    pdf.set_draw_color(*COLOR_SECONDARY)
+    pdf.set_line_width(0.4)
+    pdf.line(15, pdf.get_y(), 195, pdf.get_y())
+    pdf.ln(6)
+    
+    pdf.set_text_color(*COLOR_TEXT)
+    pdf.set_font("Helvetica", "", 10)
+    intro_txt = (
+        f"Este informe técnico consolida métricas clave del perfil patrimonial del usuario. "
+        f"Ha sido estructurado bajo estándares bancarios y de auditoría para facilitar la evaluación "
+        f"de flujos de caja, distribución de activos y la resiliencia financiera a largo plazo."
+    )
+    pdf.multi_cell(0, 5, intro_txt)
+    pdf.ln(4)
+    
+    pdf.set_text_color(*COLOR_PRIMARY)
+    pdf.set_font("Helvetica", "B", 12)
+    pdf.cell(0, 8, "1. Indicadores Base de Flujo de Caja", ln=True)
+    
+    datos_tabla = [
+        ["Entidad Laboral Declarada:", f"{du['nombre_empresa']} (Antigüedad: {du['antiguedad_trabajo']} años)"],
+        ["Ingresos Líquidos Mensuales:", f"{du['ingresos_mensuales']:,} EUR/mes"],
+        ["Capacidad de Ahorro Neto:", f"{du['ahorro_mensual_total']:,} EUR/mes (Tasa: {tasa_ahorro_aux:.1f}%)"],
+        ["Colchón de Contingencia Real:", f"{du['capital_inicial']:,} EUR ({meses_cobertura:.1f} meses de cobertura - {estado_seguridad})"]
+    ]
+    
+    for fila in datos_tabla:
+        pdf.set_font("Helvetica", "B", 9)
+        pdf.cell(60, 6, fila[0], border="B")
+        pdf.set_font("Helvetica", "", 9)
+        pdf.cell(130, 6, fila[1], border="B", ln=True)
+    pdf.ln(6)
+    
+    pdf.set_text_color(*COLOR_PRIMARY)
+    pdf.set_font("Helvetica", "B", 12)
+    pdf.cell(0, 8, "2. Distribución y Asignación de Activos (Asset Allocation)", ln=True)
+    pdf.ln(2)
+    
+    try:
+        from PIL import Image
+        img_pie_bytes = fig_pie.to_image(format="png", width=650, height=300, scale=2)
+        img_pie_pil = Image.open(io.BytesIO(img_pie_bytes))
+        pdf.image(img_pie_pil, x=20, y=pdf.get_y(), w=170)
+        pdf.ln(82)  
+    except Exception as e:
+        pdf.ln(4)
+
+    pdf.add_page()
+    
+    if fig_lineas is not None:
+        pdf.set_text_color(*COLOR_PRIMARY)
+        pdf.set_font("Helvetica", "B", 12)
+        pdf.cell(0, 8, f"3. Evolución del Capital Proyectado a {du['anos_proyeccion']} años vista", ln=True)
+        pdf.ln(2)
+        
+        try:
+            from PIL import Image
+            img_lines_bytes = fig_lineas.to_image(format="png", width=650, height=300, scale=2)
+            img_lines_pil = Image.open(io.BytesIO(img_lines_bytes))
+            pdf.image(img_lines_pil, x=20, y=pdf.get_y(), w=170)
+            pdf.ln(82)
+        except Exception as e:
+            pdf.ln(4)
+            
+    pdf.set_text_color(*COLOR_PRIMARY)
+    pdf.set_font("Helvetica", "B", 12)
+    pdf.cell(0, 8, "4. Dictamen de Previsión Estratégica", ln=True)
+    
+    pdf.set_font("Helvetica", "", 10)
+    pdf.set_text_color(*COLOR_TEXT)
+    
+    deuda_total_calc = du['capital_pendiente'] + total_pendiente_deudas_extra
+    conclusion_txt = (
+        f"Evaluación final del escenario patrimonial: Con un Objetivo de Independencia Financiera establecido en "
+        f"{num_libertad:,.0f} EUR, el perfil actual presenta una tasa de ahorro del {tasa_ahorro_aux:.1f}%. "
+        f"La carga total de pasivos reconocidos asciende a {deuda_total_calc:,.0f} EUR. El motor de simulación "
+        f"recomienda optimizar el arbitraje de tipos de interés frente a la inflación estimada del "
+        f"{du['inflacion_anual']}%, canalizando los excedentes mensuales de forma diversificada hacia los "
+        f"vehículos indexados de inversión de manera eficiente y proactiva."
+    )
+    pdf.multi_cell(0, 5, conclusion_txt)
+    
+    pdf_out = pdf.output()
+    if isinstance(pdf_out, str):
+        return pdf_out.encode("latin-1")
+    return bytes(pdf_out)
 
 
 # ==========================================
@@ -316,9 +435,6 @@ with tab_resumen:
     col_dash1, col_dash2 = st.columns([2, 3])
     with col_dash1:
         with st.container(border=True):
-            df_pie = pd.DataFrame({"Activo": list(dict_distribucion_activos.keys()), "Valor (€)": list(dict_distribucion_activos.values())})
-            fig_pie = px.pie(df_pie, values="Valor (€)", names="Activo", hole=0.4, title="Asset Allocation Actual")
-            fig_pie.update_layout(height=250, margin=dict(t=30, b=10, l=10, r=10))
             st.plotly_chart(fig_pie, use_container_width=True)
     with col_dash2:
         with st.container(border=True):
@@ -330,24 +446,22 @@ with tab_resumen:
 # ----- PESTAÑA 2: PRESUPUESTO Y DEUDAS -----
 with tab_presupuesto:
     st.subheader("🥗 Optimización y Control de Riesgos Patrimoniales", anchor=False)
-    
     st.markdown("### 🛡️ Escudo de Contingencias (Fondo de Emergencia)")
     col_f1, col_f2, col_f3 = st.columns(3)
     with col_f1:
-        st.metric("Tus Gastos Mensuales Reales", f"{gastos_mensuales_totales:,.2f} €", help="Incluye costes de vida, hipoteca y cuotas de tus deudas activas.")
+        st.metric("Tus Gastos Mensuales Reales", f"{gastos_mensuales_totales:,.2f} €")
     with col_f2:
         st.metric("Meses de Cobertura de tu Liquidez", f"{meses_cobertura:.1f} meses")
     with col_f3:
         if meses_cobertura < 3:
-            st.error("🚨 Alerta: Fondo Insuficiente. Estás expuesto ante imprevistos graves.")
+            st.error("🚨 Alerta: Fondo Insuficiente.")
         elif 3 <= meses_cobertura <= 6:
-            st.warning("⚠️ Rango Estándar: Tienes colchón, pero ajustado para crisis medianas.")
+            st.warning("⚠️ Rango Estándar: Ajustado.")
         else:
-            st.success("✅ Rango Óptimo: Nivel máximo de seguridad patrimonial.")
+            st.success("✅ Rango Óptimo: Excelente.")
 
     st.markdown("---")
     st.markdown("### 💳 Matriz de Pasivos (Deudas Actuales y Próximas)")
-    
     if st.button("➕ Añadir Nueva Deuda / Próximo Gasto"):
         du["deudas"].append({"nombre": "Nueva Deuda", "tipo": "Actual", "cuota_mensual": 100.0, "pendiente": 2000.0, "horizonte": "Inmediato"})
         guardar_automatico()
@@ -356,19 +470,15 @@ with tab_presupuesto:
     for d_idx, deuda in enumerate(du.get("deudas", [])):
         with st.container(border=True):
             col_d1, col_d2, col_d3, col_d4, col_d5 = st.columns([2, 2, 2, 2, 1])
-            with col_d1:
-                deuda["nombre"] = st.text_input("Concepto / Deuda:", value=deuda["nombre"], key=f"d_name_{d_idx}", on_change=guardar_automatico)
-            with col_d2:
-                deuda["tipo"] = st.selectbox("Estado temporal:", ["Actual", "Próxima"], index=["Actual", "Próxima"].index(deuda["tipo"]), key=f"d_tipo_{d_idx}", on_change=guardar_automatico)
-            with col_d3:
-                deuda["cuota_mensual"] = st.number_input("Cuota estimada al mes (€):", value=float(deuda["cuota_mensual"]), key=f"d_cuota_{d_idx}", on_change=guardar_automatico)
+            with col_d1: deuda["nombre"] = st.text_input("Concepto / Deuda:", value=deuda["nombre"], key=f"d_name_{d_idx}", on_change=guardar_automatico)
+            with col_d2: deuda["tipo"] = st.selectbox("Estado temporal:", ["Actual", "Próxima"], index=["Actual", "Próxima"].index(deuda["tipo"]), key=f"d_tipo_{d_idx}", on_change=guardar_automatico)
+            with col_d3: deuda["cuota_mensual"] = st.number_input("Cuota al mes (€):", value=float(deuda["cuota_mensual"]), key=f"d_cuota_{d_idx}", on_change=guardar_automatico)
             with col_d4:
                 if deuda["tipo"] == "Actual":
                     deuda["pendiente"] = st.number_input("Capital Pendiente (€):", value=float(deuda["pendiente"]), key=f"d_pend_{d_idx}", on_change=guardar_automatico)
-                    deuda["horizonte"] = "Inmediato"
                 else:
                     deuda["horizonte"] = st.selectbox("Llegada estimada:", ["En 3 meses", "En 6 meses", "En 12 meses", "Más de 1 año"], index=["En 3 meses", "En 6 meses", "En 12 meses", "Más de 1 año"].index(deuda["horizonte"] if deuda["horizonte"] in ["En 3 meses", "En 6 meses", "En 12 meses", "Más de 1 año"] else "En 3 meses"), key=f"d_horiz_{d_idx}", on_change=guardar_automatico)
-                    deuda["pendiente"] = st.number_input("Gasto total estimado (€):", value=float(deuda["pendiente"]), key=f"d_pend_{d_idx}", on_change=guardar_automatico)
+                    deuda["pendiente"] = st.number_input("Gasto estimado (€):", value=float(deuda["pendiente"]), key=f"d_pend_{d_idx}", on_change=guardar_automatico)
             with col_d5:
                 st.markdown("<br>", unsafe_allow_html=True)
                 if st.button("❌", key=f"d_del_{d_idx}"):
@@ -394,7 +504,7 @@ with tab_inversion:
         with st.container(border=True):
             col_c1, col_c2, col_c3 = st.columns([2, 2, 1])
             with col_c1: inv["nombre"] = st.text_input("Identificador:", value=inv["nombre"], key=f"inv_name_{idx}", on_change=guardar_automatico)
-            with col_c2: inv["tipo"] = st.selectbox("Naturaleza:", ["Interés Compuesto (ETFs / Fondos)", "Rentabilidad Inmobiliaria (Ladrillo)", "Activos Estáticos / Otros"], index=["Interés Compuesto (ETFs / Fondos)", "Rentabilidad Inmobiliaria (Ladrillo)", "Activos Estáticos / Otros"].index(inv["tipo"] if inv["tipo"] in ["Interés Compuesto (ETFs / Fondos)", "Rentabilidad Inmobiliaria (Ladrillo)", "Activos Estáticos / Otros"] else "Activos Estáticos / Otros"), key=f"inv_tipo_{idx}", on_change=guardar_automatico)
+            with col_c2: inv["tipo"] = st.selectbox("Naturaleza:", ["Interés Compuesto (ETFs / Fondos)", "Rentabilidad Inmobiliaria (Ladrillo)", "Activos Estáticos / Otros"], index=["Interés Compuesto (ETFs / Fondos)", "Rentabilidad Inmobiliaria (Ladrillo)", "Activos Estáticos / Otros"].index(inv["tipo"] if inv["tipo"] in ["Interés Compuesto (ETFs / Fondos)", "Rentabilidad Inmobiliaria (Ladrillo)", "Activos Estáticos / Others", "Activos Estáticos / Otros"] else "Activos Estáticos / Otros"), key=f"inv_tipo_{idx}", on_change=guardar_automatico)
             with col_c3:
                 st.markdown("<br>", unsafe_allow_html=True)
                 if st.button("❌ Eliminar", key=f"inv_del_{idx}"):
@@ -406,29 +516,23 @@ with tab_inversion:
                 c1, c2, c3 = st.columns(3)
                 with c1: inv["valor_actual"] = st.number_input("Capital actual (€)", value=float(inv["valor_actual"]), key=f"f1_{idx}", on_change=guardar_automatico)
                 with c2: inv["aportacion_mensual"] = st.number_input("Inyección al mes (€)", value=float(inv["aportacion_mensual"]), key=f"f2_{idx}", on_change=guardar_automatico)
-                with c3: inv["interes_anual"] = st.number_input("Rendimiento anual Neto (%)", value=float(inv["interes_anual"]), key=f"f3_{idx}", on_change=guardar_automatico)
+                with c3: inv["interes_anual"] = st.number_input("Rendimiento Neto (%)", value=float(inv["interes_anual"]), key=f"f3_{idx}", on_change=guardar_automatico)
 
             elif inv["tipo"] == "Rentabilidad Inmobiliaria (Ladrillo)":
                 c1, c2, c3, c4, c5 = st.columns(5)
                 with c1: inv["precio_compra"] = st.number_input("Precio compra (€)", value=float(inv["precio_compra"]), key=f"l1_{idx}", on_change=guardar_automatico)
-                with c2: inv["gastos_iniciales"] = st.number_input("Gastos/Impuestos iniciales (€)", value=float(inv["gastos_iniciales"]), key=f"l2_{idx}", on_change=guardar_automatico)
-                with c3: inv["alquiler_mensual"] = st.number_input("Renta mensual (€)", value=float(inv["alquiler_mensual"]), key=f"l3_{idx}", on_change=guardar_automatico)
-                with c4: inv["gastos_mensuales_inv"] = st.number_input("Gastos fijos al MES (€)", value=float(inv["gastos_mensuales_inv"]), key=f"l5_{idx}", on_change=guardar_automatico)
-                with c5: inv["gastos_anuales"] = st.number_input("Gastos fijos al AÑO (€)", value=float(inv["gastos_anuales"]), key=f"l4_{idx}", on_change=guardar_automatico)
+                with c2: inv["gastos_iniciales"] = st.number_input("Gastos iniciales (€)", value=float(inv["gastos_iniciales"]), key=f"l2_{idx}", on_change=guardar_automatico)
+                with c3: inv["alquiler_mensual"] = st.number_input("Renta al mes (€)", value=float(inv["alquiler_mensual"]), key=f"l3_{idx}", on_change=guardar_automatico)
+                with c4: inv["gastos_mensuales_inv"] = st.number_input("Gastos fijos MES (€)", value=float(inv["gastos_mensuales_inv"]), key=f"l5_{idx}", on_change=guardar_automatico)
+                with c5: inv["gastos_anuales"] = st.number_input("Gastos fijos AÑO (€)", value=float(inv["gastos_anuales"]), key=f"l4_{idx}", on_change=guardar_automatico)
 
             elif inv["tipo"] in ["Activos Estáticos / Otros", "Activos Estáticos / Others"]:
                 c1, c2 = st.columns(2)
                 with c1: inv["capital_invertido"] = st.number_input("Original invertido (€)", value=float(inv["capital_invertido"]), key=f"r1_{idx}", on_change=guardar_automatico)
-                with c2: inv["valor_final"] = st.number_input("Valor de mercado (€)", value=float(inv["valor_final"]), key=f"r2_{idx}", on_change=guardar_automatico)
+                with c2: inv["valor_final"] = st.number_input("Valor mercado (€)", value=float(inv["valor_final"]), key=f"r2_{idx}", on_change=guardar_automatico)
 
     st.markdown("---")
-    if len(du.get("inversiones", [])) > 0:
-        df_prep_nom = pd.DataFrame(datos_grafica_nominal).set_index("Año")
-        df_total_nom = pd.DataFrame({"Valor Nominal": df_prep_nom.sum(axis=1)})
-        df_prep_real = pd.DataFrame(datos_grafica_real).set_index("Año")
-        df_total_real = pd.DataFrame({"Valor Real Corregido": df_prep_real.sum(axis=1)})
-        df_melted = df_total_nom.join(df_total_real).reset_index().melt(id_vars=["Año"], var_name="Métrica", value_name="Capital (€)")
-        fig_lineas = px.line(df_melted, x="Año", y="Capital (€)", color="Métrica", title="Evolución del Patrimonio Bajo Inflación")
+    if fig_lineas is not None:
         st.plotly_chart(fig_lineas, use_container_width=True)
 
 # ----- PESTAÑA 4: CONSULTOR HIPOTECARIO -----
@@ -444,7 +548,7 @@ with tab_hipoteca:
     with col5: du["cuota_mensual_actual"] = st.number_input("Recibo mensual (€)", value=int(du["cuota_mensual_actual"]), on_change=guardar_automatico)
     with col6: du["seguros_anuales_banco"] = st.number_input("Seguros banco / año (€)", value=int(du["seguros_anuales_banco"]), on_change=guardar_automatico)
     with col7: du["amortizacion_extra"] = st.number_input("Amortización extra mes (€)", value=int(du["amortizacion_extra"]), on_change=guardar_automatico)
-    with col8: du["inyeccion_capital_unica"] = st.number_input("Inyección puntual inmediata (€)", value=int(du["inyeccion_capital_unica"]), on_change=guardar_automatico)
+    with col8: du["inyeccion_capital_unica"] = st.number_input("Inyección puntual (€)", value=int(du["inyeccion_capital_unica"]), on_change=guardar_automatico)
 
     if anos_contrato_restantes > 0:
         st.info(f"📆 Tiempo restante estimado: **{anos_contrato_restantes:.1f} años** | Intereses pendientes al banco: **{intereses_totales_banco:,.2f} €**")
@@ -453,171 +557,12 @@ with tab_hipoteca:
 with tab_libertad:
     st.subheader("🕊️ Tu Meta de Libertad Financiera (Regla del 4%)", anchor=False)
     st.error(f"## 🎯 TU NÚMERO OBJETIVO: {num_libertad:,.2f} €")
-    st.write("Este número representa el capital total necesario invertido para poder retirar un 4% anual perpetuo que cubra por completo tu nivel de vida actual sin trabajar.")
-
-
-# ==========================================
-# 📥 MOTOR DE EXPORTACIÓN PDF PREMIUM (SIDEBAR)
-# ==========================================
-def generar_pdf_premium_bytes():
-    # 1. Recopilación de textos dinámicos internos
-    txt_activos = ""
-    for i in du.get("inversiones", []):
-        txt_activos += f"- {i['nombre']}: {i['valor_actual']} EUR\n"
-
-    txt_deudas_pdf = ""
-    for d in du.get("deudas", []):
-        txt_deudas_pdf += f"- {d['nombre']} ({d['tipo']}): Total: {d['pendiente']} EUR | Cuota: {d['cuota_mensual']} EUR/mes (Horizonte: {d['horizonte']})\n"
-
-    tasa_ahorro_aux = (du["ahorro_mensual_total"] / ingresos_totales) * 100 if ingresos_totales > 0 else 0
-
-    # 2. Configuración del lienzo PDF
-    pdf = FPDF(orientation="P", unit="mm", format="A4")
-    pdf.set_auto_page_break(auto=True, margin=20)
-    pdf.add_page()
-    
-    # Colores corporativos Movana (Gris oscuro premium y Azul ejecutivo)
-    COLOR_PRIMARY = (26, 36, 43)    
-    COLOR_SECONDARY = (70, 100, 120) 
-    COLOR_TEXT = (50, 50, 50)       
-    
-    # Cabecera principal
-    pdf.set_text_color(*COLOR_PRIMARY)
-    pdf.set_font("Helvetica", "B", 22)
-    pdf.cell(0, 12, "MOVANA PRO | REPORTING PATRIMONIAL", ln=True, align="C")
-    
-    pdf.set_text_color(*COLOR_SECONDARY)
-    pdf.set_font("Helvetica", "I", 10)
-    pdf.cell(0, 6, "Dossier Ejecutivo de Planificación y Viabilidad Financiera", ln=True, align="C")
-    pdf.ln(4)
-    
-    # Línea divisoria elegante
-    pdf.set_draw_color(*COLOR_SECONDARY)
-    pdf.set_line_width(0.4)
-    pdf.line(15, pdf.get_y(), 195, pdf.get_y())
-    pdf.ln(6)
-    
-    # Explicación previa (Introducción analítica)
-    pdf.set_text_color(*COLOR_TEXT)
-    pdf.set_font("Helvetica", "", 10)
-    intro_txt = (
-        f"Este informe técnico consolida métricas clave del perfil patrimonial del usuario. "
-        f"Ha sido estructurado bajo estándares bancarios y de auditoría para facilitar la evaluación "
-        f"de flujos de caja, distribución de activos y la resiliencia financiera a largo plazo."
-    )
-    pdf.multi_cell(0, 5, intro_txt)
-    pdf.ln(4)
-    
-    # Sección 1: Ratios macro de flujos
-    pdf.set_text_color(*COLOR_PRIMARY)
-    pdf.set_font("Helvetica", "B", 12)
-    pdf.cell(0, 8, "1. Indicadores Base de Flujo de Caja", ln=True)
-    
-    pdf.set_font("Helvetica", "", 9)
-    pdf.set_text_color(*COLOR_TEXT)
-    
-    datos_tabla = [
-        ["Entidad Laboral Declarada:", f"{du['nombre_empresa']} (Antigüedad: {du['antiguedad_trabajo']} años)"],
-        ["Ingresos Líquidos Mensuales:", f"{du['ingresos_mensuales']:,} EUR/mes"],
-        ["Capacidad de Ahorro Neto:", f"{du['ahorro_mensual_total']:,} EUR/mes (Tasa: {tasa_ahorro_aux:.1f}%)"],
-        ["Colchón de Contingencia Real:", f"{du['capital_inicial']:,} EUR ({meses_cobertura:.1f} meses de cobertura - {estado_seguridad})"]
-    ]
-    
-    for fila in datos_tabla:
-        pdf.set_font("Helvetica", "B", 9)
-        pdf.cell(60, 6, fila[0], border="B")
-        pdf.set_font("Helvetica", "", 9)
-        pdf.cell(130, 6, fila[1], border="B", ln=True)
-    pdf.ln(6)
-    
-    # Sección 2: Asset Allocation con Gráfica integrada (Solución PIL)
-    pdf.set_text_color(*COLOR_PRIMARY)
-    pdf.set_font("Helvetica", "B", 12)
-    pdf.cell(0, 8, "2. Distribución y Asignación de Activos (Asset Allocation)", ln=True)
-    pdf.ln(2)
-    
-    try:
-        from PIL import Image
-        img_pie_bytes = fig_pie.to_image(format="png", width=650, height=300, scale=2)
-        # Convertimos el bytearray a una imagen PIL real
-        img_pie_pil = Image.open(io.BytesIO(img_pie_bytes))
-        pdf.image(img_pie_pil, x=20, y=pdf.get_y(), w=170)
-        pdf.ln(82)  
-    except Exception as e:
-        pdf.set_font("Helvetica", "I", 9)
-        pdf.cell(0, 6, f"[Gráfica de asignación optimizada en memoria - {e}]", ln=True)
-        pdf.ln(4)
-
-    # Forzamos salto de página para mantener el diseño premium limpio
-    pdf.add_page()
-    
-    # Sección 3: Proyecciones temporales con Gráfica (Solución PIL)
-    pdf.set_text_color(*COLOR_PRIMARY)
-    pdf.set_font("Helvetica", "B", 12)
-    pdf.cell(0, 8, f"3. Evolución del Capital Proyectado a {du['anos_proyeccion']} años vista", ln=True)
-    pdf.ln(2)
-    
-    try:
-        from PIL import Image
-        img_lines_bytes = fig_lineas.to_image(format="png", width=650, height=300, scale=2)
-        # Convertimos el bytearray a una imagen PIL real
-        img_lines_pil = Image.open(io.BytesIO(img_lines_bytes))
-        pdf.image(img_lines_pil, x=20, y=pdf.get_y(), w=170)
-        pdf.ln(82)
-    except Exception as e:
-        pdf.set_font("Helvetica", "I", 9)
-        pdf.cell(0, 6, f"[Gráfica de evolución temporal optimizada - {e}]", ln=True)
-        pdf.ln(4)
-        
-    # Sección 4: Explicación final (Escenario técnico de futuro)
-    pdf.set_text_color(*COLOR_PRIMARY)
-    pdf.set_font("Helvetica", "B", 12)
-    pdf.cell(0, 8, "4. Dictamen de Previsión Estratégica", ln=True)
-    
-    pdf.set_font("Helvetica", "", 10)
-    pdf.set_text_color(*COLOR_TEXT)
-    
-    deuda_total_calc = du['capital_pendiente'] + total_pendiente_deudas_extra
-    conclusion_txt = (
-        f"Evaluación final del escenario patrimonial: Con un Objetivo de Independencia Financiera establecido en "
-        f"{num_libertad:,.0f} EUR, el perfil actual presenta una tasa de ahorro del {tasa_ahorro_aux:.1f}%. "
-        f"La carga total de pasivos reconocidos asciende a {deuda_total_calc:,.0f} EUR. El motor de simulación "
-        f"recomienda optimizar el arbitraje de tipos de interés frente a la inflación estimada del "
-        f"{du['inflacion_anual']}%, canalizando los excedentes mensuales de forma diversificada hacia los "
-        f"vehículos indexados de inversión de manera eficiente y proactiva."
-    )
-    pdf.multi_cell(0, 5, conclusion_txt)
-    
-    # Retorno blindado compatible tanto con FPDF clásico como con FPDF2 en Streamlit Cloud
-    pdf_out = pdf.output()
-    if isinstance(pdf_out, str):
-        return pdf_out.encode("latin-1")
-    return bytes(pdf_out)
-
+    st.write("Capital total necesario invertido para retirar un 4% anual perpetuo que cubra tus costes sin depender de un trabajo.")
 
 # ----- PESTAÑA 6: DICTAMEN E IA CHAT -----
 with tab_ia:
-    st.subheader("🤖 Dictamen Avanzado e Inteligencia Artificial", anchor=False)
+    st.subheader("💬 Consultor de Estrategia Patrimonial", anchor=False)
     
-    # 🚀 Botón Premium de descarga en maquetación de columnas limpia
-    col_btn, col_reset = st.columns([3, 1])
-    with col_btn:
-        try:
-            pdf_bytes = generar_pdf_premium_bytes()
-            st.download_button(
-                label="🚀 Generar Auditoría Patrimonial Completa (PDF)",
-                data=pdf_bytes,
-                file_name="Auditoria_Patrimonial_Movana.pdf",
-                mime="application/pdf",
-                use_container_width=True
-            )
-        except Exception as err:
-            st.error(f"Error preparando el motor PDF: {err}")
-            
-    st.markdown("---")
-    st.markdown("### 💬 Consultor de Estrategia Patrimonial")
-    
-    # Lógica interactiva con la API Key guardada
     if st.session_state.get("api_key_guardada"):
         try:
             genai.configure(api_key=st.session_state.api_key_guardada)
@@ -634,7 +579,6 @@ with tab_ia:
                     st.write(prompt_usuario)
                 st.session_state.mensajes_chat.append({"role": "user", "content": prompt_usuario})
                 
-                # Contextualización rica enviada al modelo de IA
                 contexto_patrimonial = (
                     f"Actúa como un auditor patrimonial privado de élite. Datos actuales:\n"
                     f"- Ingresos Netos: {ingresos_totales:.2f} EUR/mes\n"
@@ -652,6 +596,25 @@ with tab_ia:
                 st.session_state.mensajes_chat.append({"role": "assistant", "content": respuesta_ia.text})
                 
         except Exception as e:
-            st.warning(f"El chat de IA está listo, esperando inicialización completa del modelo: {e}")
+            st.warning(f"Esperando inicialización del modelo de IA: {e}")
     else:
-        st.info("💡 Consejo: Añade la variable `GEMINI_API_KEY` en los Secrets de tu panel de Streamlit para activar el consultor interactivo por voz y texto.")
+        st.info("💡 Vincula la clave GEMINI_API_KEY en los Secrets para activar este consultor dinámico.")
+
+
+# ==========================================
+# 🚪 RENDERIZADO DEL BOTÓN PDF EN LA SIDEBAR (ABAJO)
+# ==========================================
+with st.sidebar:
+    st.markdown("---")
+    st.markdown("### 📥 Exportación")
+    try:
+        pdf_bytes = generar_pdf_premium_bytes()
+        st.download_button(
+            label="🚀 Descargar Proyecto PDF",
+            data=pdf_bytes,
+            file_name="Auditoria_Patrimonial_Movana.pdf",
+            mime="application/pdf",
+            use_container_width=True
+        )
+    except Exception as err:
+        st.error(f"Error preparando la descarga: {err}")

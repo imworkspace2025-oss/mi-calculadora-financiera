@@ -580,23 +580,16 @@ with tab_presupuesto:
 # ----- PESTANA 3: RENTABILIDAD E INVERSION -----
 with tab_inversion:
     st.subheader("💼 Matriz Patrimonial y Asignación de Activos", anchor=False)
-    if st.button("➕ Vincular Nuevo Activo/Inversión"):
+    
+    # Un solo botón, y le añadimos un 'key' único por seguridad
+    if st.button("➕ Vincular Nuevo Activo/Inversión", key="btn_vincular_activo_nuevo"):
         du["inversiones"].append({
             "nombre": f"Nuevo Activo {len(du['inversiones']) + 1}",
-            "tipo": "Interés Compuesto (ETFs / Fondos)",
-            "valor_actual": 0.0, 
-            "aportacion_mensual": 0.0, 
-            "interes_anual": 7.0,
-            "precio_compra": 100000.0, 
-            "gastos_iniciales": 10000.0, 
-            "alquiler_mensual": 500.0, 
-            "gastos_mensuales_inv": 40.0, 
-            "gastos_anuales": 600.0, 
-            "capital_invertido": 5000.0, 
-            "valor_final": 5000.0,
-            "financiacion_inmueble": 0.0
+            "valor_actual": 0.0,       # Crucial para que no te vuelva a dar el KeyError
+            "tipo": "Efectivo",
+            "rentabilidad_anual": 0.0
         })
-        guardar_automatico()
+        guardar_automatico()  # Asegúrate de que esta línea esté si usas autoguardado
         st.rerun()
 # ----- PESTAÑA 3: RENTABILIDAD E INVERSION -----
 with tab_inversion:

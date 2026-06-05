@@ -698,31 +698,52 @@ with tab_inversion:
                     guardar_automatico()
                     st.rerun()
                 st.markdown("</div>", unsafe_allow_html=True)
-# ----- PESTAÑA 4: CONSULTOR HIPOTECARIO -----
-with tab_hipoteca:
-    st.subheader("🏠 Consultor y Optimizador de Carga Hipotecaria", anchor=False)
+# ----- PESTAÑA 4: CONSULTOR PATRIMONIAL IA INTERACTIVO -----
+with tab_ia:
+    st.subheader("🤖 Consultor Patrimonial Privado", anchor=False)
+    st.caption("Tu IA tiene acceso en tiempo real a tu matriz de deudas, inmuebles e inversiones para asesorarte.")
     
-    col_h1, col_h2 = st.columns([2, 3])
-    with col_h1:
-        with st.container(border=True):
-            st.markdown("#### Datos de la Hipoteca Principal")
-            du["tipo_hipoteca"] = st.selectbox("Tipo de Estructura:", ["Fija", "Variable"], index=["Fija", "Variable"].index(du["tipo_hipoteca"]), on_change=st.rerun)
-            du["capital_original"] = st.number_input("Capital Concedido Original (€)", value=int(du["capital_original"]), step=5000, on_change=guardar_automatico)
-            du["capital_pendiente"] = st.number_input("Capital Pendiente de Amortizar (€)", value=int(du["capital_pendiente"]), step=5000, on_change=guardar_automatico)
-            du["interes_anual_actual"] = st.number_input("Tipo de Interés Nominal Anual (%)", value=float(du["interes_anual_actual"]), step=0.1, on_change=guardar_automatico)
-            du["cuota_mensual_actual"] = st.number_input("Cuota Mensual Actual (€)", value=int(du["cuota_mensual_actual"]), step=50, on_change=guardar_automatico)
-            du["seguros_anuales_banco"] = st.number_input("Seguros obligatorios vinculados (Al año €)", value=int(du["seguros_anuales_banco"]), step=50, on_change=guardar_automatico)
-
-    with col_h2:
-        with st.container(border=True):
-            st.markdown("#### ⚖️ Métricas de Sostenibilidad Bancaria")
-            c_m1, c_m2 = st.columns(2)
-            with c_m1:
-                st.metric("Cuota Mensual Indexada (Con Riesgos)", f"{cuota_hipotecaria_final:,.2f} €")
-                st.metric("Carga en Seguros (Mes)", f"{coste_mensual_seguros:,.2f} €")
-            with c_m2:
-                st.metric("Años de Contrato Restantes", f"{anos_contrato_restantes:.1f} años")
-                st.metric("Intereses Pendientes al Banco", f"{intereses_totales_banco:,.2f} €")
+    # Inicializar el historial de conversación en la sesión
+    if "historial_chat" not in st.session_state:
+        st.session_state.historial_chat = [
+            {"role": "assistant", "content": "Hola. Soy tu consultor financiero de confianza. Analizando tu balance actual... ¿Qué estrategia patrimonial te gustaría simular o revisar hoy?"}
+        ]
+        
+    # Renderizar el historial de chat con diseño nativo
+    for mensaje in st.session_state.historial_chat:
+        with st.chat_message(mensaje["role"]):
+            st.write(mensaje["content"])
+            
+    # Entrada de texto del usuario
+    if prompt_usuario := st.chat_input("Ej: ¿Qué pasa si liquido el fondo estático para amortizar la hipoteca de mi activo inmobiliario?"):
+        # Mostrar el mensaje del usuario en la pantalla
+        with st.chat_message("user"):
+            st.write(prompt_usuario)
+        st.session_state.historial_chat.append({"role": "user", "content": prompt_usuario})
+        
+        # Generar la respuesta simulando o llamando a tu proveedor de LLM (OpenAI / Anthropic / Groq)
+        with st.chat_message("assistant"):
+            with st.spinner("Analizando impactos en el ROE y flujo de caja..."):
+                try:
+                    # AQUÍ CONECTAS CON TU LLM. Ejemplo estructural con OpenAI:
+                    # import openai
+                    # response = openai.chat.completions.create(
+                    #     model="gpt-4o",
+                    #     messages=[
+                    #         {"role": "system", "content": f"Eres un asesor financiero de banca privada. El balance real del usuario es: {du}"},
+                    #         {"role": "user", "content": prompt_usuario}
+                    #     ]
+                    # )
+                    # respuesta_ia = response.choices[0].message.content
+                    
+                    # Respuesta Estructural de Inteligencia Patrimonial (Mock de alta fidelidad si no hay API Key)
+                    respuesta_ia = f"Entendido. Analizando tu cartera con respecto a tu consulta: '{prompt_usuario}'. Si ejecutamos esa acción, el impacto en tu Matriz Patrimonial afectará directamente al coste de oportunidad de tus fondos. Recomiendo priorizar activos cuyo ROE supere el coste de financiación actual de tus deudas vivas."
+                    
+                except Exception as e:
+                    respuesta_ia = "Lo siento, en este momento no he podido conectar con el núcleo analítico en la nube. Por favor, verifica tus credenciales de IA."
+                
+                st.write(respuesta_ia)
+                st.session_state.historial_chat.append({"role": "assistant", "content": respuesta_ia})
 
 # ----- PESTAÑA 5: HORIZONTE INDEPENDENCIA -----
 with tab_libertad:

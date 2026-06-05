@@ -163,7 +163,30 @@ for item in du.get("inversiones", []):
     if "financiacion_inmueble" not in item: item["financiacion_inmueble"] = 0.0
 
 def guardar_automatico():
-    st.query_params["db"] = json.dumps(st.session_state.datos_usuario)
+    """Guarda en session_state y sincroniza de forma silenciosa con Supabase."""
+    # 1. Actualización local inmediata
+    st.session_state.datos_usuario = du
+    
+    # 2. Sincronización en la nube con Supabase
+    try:
+        from supabase import create_client
+        
+        # Conexión segura usando st.secrets
+        url = st.secrets["SUPABASE_URL"]
+        key = st.secrets["SUPABASE_KEY"]
+        supabase = create_client(url, key)
+        
+        # Identificamos al usuario (por variable de sesión o parámetro limpio en URL)
+        user_id = st.query_params.get("user_id", "usuario_demo")
+        
+        # Hacemos el .update() silencioso del JSON patrimonial
+        supabase.table("usuarios").update({
+            "datos_financieros": du
+        }).eq("id", user_id).execute()
+        
+    except Exception as e:
+        # Fallback silencioso en producción para no romper la experiencia de usuario
+        pass
 
 # ==========================================
 # ⚙️ BARRA LATERAL AVANZADA (ENTRADA GLOBAL)

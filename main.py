@@ -565,80 +565,86 @@ with tab_resumen:
         st.progress(min(max(porcentaje_meta / 100, 0.0), 1.0))
         st.info(f"Objetivo: **{num_libertad:,.0f} €** (Regla del 4%). Llevas completado el **{porcentaje_meta:.1f}%** de tu meta definitiva.")
 
-# ----- PESTAÑA 2: CONSULTOR HIPOTECARIO (MÓDULO PREMIUM BANCA PRIVADA) -----
-with tab_hipotecario:
-    st.subheader("🏦 Consultor Hipotecario y Optimización de Deuda", anchor=False)
-    st.caption("Control analítico de apalancamiento, costes de financiación y ratios LTV (Loan-to-Value) en tiempo real.")
+# ==============================================================================
+# ----- PESTAÑA 2: PRESUPUESTO Y DEUDAS -----
+# ==============================================================================
+with tab_presupuesto:
+    st.subheader("🥗 Flujo de Caja y Deudas a Corto Plazo", anchor=False)
+    st.caption("Control de tus ingresos, capacidad de ahorro y préstamos personales o tarjetas de crédito.")
+
+    # --- 1. Resumen del Flujo de Caja (Presupuesto Mensual) ---
+    st.markdown("### 💸 Tu Presupuesto Mensual Base")
     
-    # Inicializar la lista de deudas de forma segura en tu diccionario
-    if "deudas" not in du:
-        du["deudas"] = []
-        
-    # Botón de acción con ID único absoluto para evitar duplicidades
-    if st.button("➕ Vincular Nueva Hipoteca / Préstamo", key="btn_hipoteca_premium_definitivo_top"):
+    col_p1, col_p2, col_p3 = st.columns(3)
+    
+    # Recalculamos valores para mostrarlos limpios en el dashboard
+    ingreso_extra_mensual = du.get("dinero_extra_anual", 0) / 12
+    ingreso_total_mes = du.get("ingresos_mensuales", 0) + ingreso_extra_mensual
+    ahorro_mes = du.get("ahorro_mensual_total", 0)
+    
+    # Sumamos las cuotas de las deudas "Actuales" (consumo) y la hipoteca global
+    cuota_hipo = du.get("cuota_mensual_actual", 0)
+    cuota_otras_deudas = sum(float(d.get("cuota_mensual", 0)) for d in du.get("deudas", []) if d.get("tipo") == "Actual")
+    gastos_fijos_deuda = cuota_hipo + cuota_otras_deudas
+    
+    # Lo que queda limpio para vivir (ocio, comida, suministros...)
+    dinero_para_vivir = ingreso_total_mes - ahorro_mes - gastos_fijos_deuda
+
+    with col_p1:
+        st.metric("Ingresos Totales (con extras)", f"{ingreso_total_mes:,.2f} €".replace(",", "X").replace(".", ",").replace("X", "."))
+    with col_p2:
+        st.metric("Ahorro / Inversión Mensual", f"{ahorro_mes:,.2f} €".replace(",", "X").replace(".", ",").replace("X", "."))
+    with col_p3:
+        st.metric("Disponible para Gastos (Vivir)", f"{dinero_para_vivir:,.2f} €".replace(",", "X").replace(".", ",").replace("X", "."))
+
+    # Barra de progreso visual del presupuesto
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("**Distribución de tu sueldo (Regla del Presupuesto):**")
+    pct_ahorro = (ahorro_mes / ingreso_total_mes * 100) if ingreso_total_mes > 0 else 0
+    pct_deuda = (gastos_fijos_deuda / ingreso_total_mes * 100) if ingreso_total_mes > 0 else 0
+    
+    st.progress(pct_ahorro / 100, text=f"Tasa de Ahorro ({pct_ahorro:.1f}%)")
+    st.progress(min(pct_deuda / 100, 1.0), text=f"Carga de Deudas e Hipoteca ({pct_deuda:.1f}%)")
+    
+    if dinero_para_vivir < 0:
+        st.error("⚠️ Alerta de Liquidez: Tus deudas y ahorro superan tus ingresos mensuales.")
+    else:
+        st.success(f"Estilo de vida: Te quedan **{dinero_para_vivir:,.2f} €** al mes para compras, ocio y gastos diarios.")
+
+    st.divider()
+
+    # --- 2. Gestión de Deudas de Consumo ---
+    st.markdown("### 💳 Deudas de Consumo y Préstamos Personales")
+    st.caption("Añade aquí préstamos del coche, tarjetas de crédito o reformas. (Recuerda: las hipotecas se gestionan en la pestaña 4).")
+
+    if st.button("➕ Añadir Préstamo de Consumo", key="btn_add_deuda_consumo"):
         du["deudas"].append({
-            "nombre": f"Hipoteca {len(du['deudas']) + 1}",
-            "capital_pendiente": 100000.0,
-            "interes_anual": 3.0,
-            "plazo_años": 20,
-            "valor_activo_vinculado": 150000.0
+            "nombre": f"Nuevo Préstamo {len(du['deudas']) + 1}",
+            "tipo": "Actual",
+            "cuota_mensual": 150.0,
+            "pendiente": 3000.0,
+            "horizonte": "Corto Plazo"
         })
         guardar_automatico()
         st.rerun()
-        
-    # Renderizado y Análisis Avanzado de la matriz de deudas
+
+    # Filtramos para mostrar SOLO las deudas de consumo (tipo "Actual") y no pisar las de la pestaña Hipotecaria
     for idx, deuda in enumerate(du.get("deudas", [])):
-        with st.container(border=True):
-            col_d1, col_d2, col_d3 = st.columns([3, 3, 4])
-            
-            with col_d1:
-                deuda["nombre"] = st.text_input("Identificador del Préstamo:", value=deuda.get("nombre", ""), key=f"d_p_nom_{idx}", on_change=guardar_automatico)
-                deuda["plazo_años"] = st.number_input("Plazo Restante (Años):", value=int(deuda.get("plazo_años", 20)), min_value=1, key=f"d_p_plz_{idx}", on_change=guardar_automatico)
-                deuda["valor_activo_vinculado"] = st.number_input("Valoración del Activo Vinculado (€):", value=float(deuda.get("valor_activo_vinculado", 150000.0)), key=f"d_p_val_{idx}", on_change=guardar_automatico)
-            
-            with col_d2:
-                deuda["capital_pendiente"] = st.number_input("Capital Vivo Pendiente (€):", value=float(deuda.get("capital_pendiente", 0.0)), key=f"d_p_cap_{idx}", on_change=guardar_automatico)
-                deuda["interes_anual"] = st.number_input("Tipo de Interés (TIN %):", value=float(deuda.get("interes_anual", 0.0)), key=f"d_p_int_{idx}", on_change=guardar_automatico)
-                
-            with col_d3:
-                st.markdown("<p style='color:#888; font-size:12px; margin-bottom:2px; font-weight:bold;'>MÉTRICAS DE APALANCAMIENTO AVANZADO</p>", unsafe_allow_html=True)
-                
-                cap = float(deuda.get("capital_pendiente", 0.0))
-                val_activo = float(deuda.get("valor_activo_vinculado", 0.0))
-                tin_mensual = (float(deuda.get("interes_anual", 0.0)) / 100) / 12
-                meses = int(deuda.get("plazo_años", 20)) * 12
-                
-                # Sistema de amortización francés para la cuota mensual
-                if tin_mensual > 0 and meses > 0:
-                    cuota = cap * (tin_mensual * (1 + tin_mensual)**meses) / ((1 + tin_mensual)**meses - 1)
-                else:
-                    cuota = cap / meses if meses > 0 else 0.0
-                    
-                total_intereses = (cuota * meses) - cap if (cuota * meses) > cap else 0.0
-                ltv = (cap / val_activo * 100) if val_activo > 0 else 0.0
-                
-                # Despliegue visual tipo Dashboard de Inversión con formateo local directo
-                st.metric("Cuota Mensual Estimada", f"{cuota:,.2f} €".replace(",", "X").replace(".", ",").replace("X", "."))
-                
-                sub_c1, sub_c2 = st.columns(2)
-                sub_c1.metric("LTV (Deuda / Activo)", f"{ltv:.1f} %")
-                sub_c2.metric("Intereses Pendientes", f"{total_intereses:,.2f} €".replace(",", "X").replace(".", ",").replace("X", "."))
-                
-                # Semáforo de riesgo financiero según el Loan-to-Value (LTV)
-                if ltv > 80:
-                    st.error("⚠️ Riesgo Alto: Financiación por encima del 80% del activo.")
-                elif ltv > 60:
-                    st.warning("⚡ Riesgo Moderado: Nivel de apalancamiento intermedio.")
-                elif ltv > 0:
-                    st.success("🔒 Riesgo Bajo: Excelente ratio de capital propio.")
-                
-                # Botón de borrado elegante
-                st.markdown("<div style='text-align: right; margin-top: 10px;'>", unsafe_allow_html=True)
-                if st.button("🗑️ Eliminar Préstamo", key=f"d_p_del_btn_{idx}"):
-                    du["deudas"].pop(idx)
-                    guardar_automatico()
-                    st.rerun()
-                st.markdown("</div>", unsafe_allow_html=True)
+        if deuda.get("tipo") == "Actual":
+            with st.container(border=True):
+                col_c1, col_c2, col_c3, col_c4 = st.columns([3, 2, 2, 1])
+                with col_c1:
+                    deuda["nombre"] = st.text_input("Concepto (Ej. Coche):", value=deuda.get("nombre", ""), key=f"d_cons_nom_{idx}", on_change=guardar_automatico)
+                with col_c2:
+                    deuda["pendiente"] = st.number_input("Capital Pendiente (€):", value=float(deuda.get("pendiente", 0.0)), step=100.0, key=f"d_cons_pend_{idx}", on_change=guardar_automatico)
+                with col_c3:
+                    deuda["cuota_mensual"] = st.number_input("Cuota Mensual (€):", value=float(deuda.get("cuota_mensual", 0.0)), step=10.0, key=f"d_cons_cuota_{idx}", on_change=guardar_automatico)
+                with col_c4:
+                    st.markdown("<br>", unsafe_allow_html=True)
+                    if st.button("🗑️", key=f"d_cons_del_{idx}"):
+                        du["deudas"].pop(idx)
+                        guardar_automatico()
+                        st.rerun()
 
 # ----- PESTAÑA 3: RENTABILIDAD E INVERSION (MÓDULO PREMIUM) -----
 with tab_inversion:
@@ -733,86 +739,78 @@ with tab_inversion:
                     guardar_automatico()
                     st.rerun()
                 st.markdown("</div>", unsafe_allow_html=True)
+# # ==============================================================================
 # ----- PESTAÑA 4: CONSULTOR HIPOTECARIO (MÓDULO PREMIUM BANCA PRIVADA) -----
-# Buscamos dinámicamente tu cuarta pestaña para evitar cualquier NameError
-lista_tabs = [v for k, v in locals().items() if "tab" in k.lower()] + [v for k, v in globals().items() if "tab" in k.lower()]
-target_tab = lista_tabs[3] if len(lista_tabs) >= 4 else None
-
-if target_tab is None:
-    st.warning("⚠️ Módulo Hipotecario en mantenimiento (Verifica el orden de st.tabs).")
-else:
-    with target_tab:
-        st.subheader("🏦 Consultor Hipotecario y Optimización de Deuda", anchor=False)
-        st.caption("Control analítico de apalancamiento, costes de financiación y ratios LTV (Loan-to-Value) en tiempo real.")
+# ==============================================================================
+with tab_hipoteca:
+    st.subheader("🏦 Consultor Hipotecario y Optimización de Deuda", anchor=False)
+    st.caption("Control analítico de apalancamiento, costes de financiación y ratios LTV (Loan-to-Value) en tiempo real.")
+    
+    if "deudas" not in du:
+        du["deudas"] = []
         
-        # Inicializar la lista de deudas de forma segura en tu diccionario
-        if "deudas" not in du:
-            du["deudas"] = []
+    if st.button("➕ Vincular Nueva Hipoteca / Préstamo", key="btn_hipoteca_banca_privada_definitivo"):
+        du["deudas"].append({
+            "nombre": f"Hipoteca {len(du['deudas']) + 1}",
+            "capital_pendiente": 100000.0,
+            "interes_anual": 3.0,
+            "plazo_años": 20,
+            "valor_activo_vinculado": 150000.0
+        })
+        guardar_automatico()
+        st.rerun()
+        
+    for idx, deuda in enumerate(du.get("deudas", [])):
+        with st.container(border=True):
+            col_d1, col_d2, col_d3 = st.columns([3, 3, 4])
             
-        # Botón de acción con ID único absoluto para evitar duplicidades
-        if st.button("➕ Vincular Nueva Hipoteca / Préstamo", key="btn_hipoteca_premium_definitivo_v3"):
-            du["deudas"].append({
-                "nombre": f"Hipoteca {len(du['deudas']) + 1}",
-                "capital_pendiente": 100000.0,
-                "interes_anual": 3.0,
-                "plazo_años": 20,
-                "valor_activo_vinculado": 150000.0
-            })
-            guardar_automatico()
-            st.rerun()
+            with col_d1:
+                deuda["nombre"] = st.text_input("Identificador del Préstamo:", value=deuda.get("nombre", ""), key=f"d_p_nom_def_{idx}", on_change=guardar_automatico)
+                deuda["plazo_años"] = st.number_input("Plazo Restante (Años):", value=int(deuda.get("plazo_años", 20)), min_value=1, key=f"d_p_plz_def_{idx}", on_change=guardar_automatico)
+                deuda["valor_activo_vinculado"] = st.number_input("Valoración del Activo Vinculado (€):", value=float(deuda.get("valor_activo_vinculado", 150000.0)), key=f"d_p_val_def_{idx}", on_change=guardar_automatico)
             
-        # Renderizado y Análisis Avanzado de la matriz de deudas
-        for idx, deuda in enumerate(du.get("deudas", [])):
-            with st.container(border=True):
-                col_d1, col_d2, col_d3 = st.columns([3, 3, 4])
+            with col_d2:
+                deuda["capital_pendiente"] = st.number_input("Capital Vivo Pendiente (€):", value=float(deuda.get("capital_pendiente", 0.0)), key=f"d_p_cap_def_{idx}", on_change=guardar_automatico)
+                deuda["interes_anual"] = st.number_input("Tipo de Interés (TIN %):", value=float(deuda.get("interes_anual", 0.0)), key=f"d_p_int_def_{idx}", on_change=guardar_automatico)
                 
-                with col_d1:
-                    deuda["nombre"] = st.text_input("Identificador del Préstamo:", value=deuda.get("nombre", ""), key=f"d_p_nom_v3_{idx}", on_change=guardar_automatico)
-                    deuda["plazo_años"] = st.number_input("Plazo Restante (Años):", value=int(deuda.get("plazo_años", 20)), min_value=1, key=f"d_p_plz_v3_{idx}", on_change=guardar_automatico)
-                    deuda["valor_activo_vinculado"] = st.number_input("Valoración del Activo Vinculado (€):", value=float(deuda.get("valor_activo_vinculado", 150000.0)), key=f"d_p_val_v3_{idx}", on_change=guardar_automatico)
+            with col_d3:
+                st.markdown("<p style='color:#888; font-size:12px; margin-bottom:2px; font-weight:bold;'>MÉTRICAS DE APALANCAMIENTO AVANZADO</p>", unsafe_allow_html=True)
                 
-                with col_d2:
-                    deuda["capital_pendiente"] = st.number_input("Capital Vivo Pendiente (€):", value=float(deuda.get("capital_pendiente", 0.0)), key=f"d_p_cap_v3_{idx}", on_change=guardar_automatico)
-                    deuda["interes_anual"] = st.number_input("Tipo de Interés (TIN %):", value=float(deuda.get("interes_anual", 0.0)), key=f"d_p_int_v3_{idx}", on_change=guardar_automatico)
+                cap = float(deuda.get("capital_pendiente", 0.0))
+                val_activo = float(deuda.get("valor_activo_vinculado", 0.0))
+                tin_mensual = (float(deuda.get("interes_anual", 0.0)) / 100) / 12
+                meses = int(deuda.get("plazo_años", 20)) * 12
+                
+                if tin_mensual > 0 and meses > 0:
+                    cuota = cap * (tin_mensual * (1 + tin_mensual)**meses) / ((1 + tin_mensual)**meses - 1)
+                else:
+                    cuota = cap / meses if meses > 0 else 0.0
                     
-                with col_d3:
-                    st.markdown("<p style='color:#888; font-size:12px; margin-bottom:2px; font-weight:bold;'>MÉTRICAS DE APALANCAMIENTO AVANZADO</p>", unsafe_allow_html=True)
-                    
-                    cap = float(deuda.get("capital_pendiente", 0.0))
-                    val_activo = float(deuda.get("valor_activo_vinculado", 0.0))
-                    tin_mensual = (float(deuda.get("interes_anual", 0.0)) / 100) / 12
-                    meses = int(deuda.get("plazo_años", 20)) * 12
-                    
-                    if tin_mensual > 0 and meses > 0:
-                        cuota = cap * (tin_mensual * (1 + tin_mensual)**meses) / ((1 + tin_mensual)**meses - 1)
-                    else:
-                        cuota = cap / meses if meses > 0 else 0.0
-                        
-                    total_intereses = (cuota * meses) - cap if (cuota * meses) > cap else 0.0
-                    ltv = (cap / val_activo * 100) if val_activo > 0 else 0.0
-                    
-                    cuota_formateada = f"{cuota:,.2f} €".replace(",", "X").replace(".", ",").replace("X", ".")
-                    intereses_formateados = f"{total_intereses:,.2f} €".replace(",", "X").replace(".", ",").replace("X", ".")
-                    
-                    st.metric("Cuota Mensual Estimada", cuota_formateada)
-                    
-                    sub_c1, sub_c2 = st.columns(2)
-                    sub_c1.metric("LTV (Deuda / Activo)", f"{ltv:.1f} %")
-                    sub_c2.metric("Intereses Pendientes", intereses_formateados)
-                    
-                    if ltv > 80:
-                        st.error("⚠️ Riesgo Alto: Financiación por encima del 80% del activo.")
-                    elif ltv > 60:
-                        st.warning("⚡ Riesgo Moderado: Nivel de apalancamiento intermedio.")
-                    elif ltv > 0:
-                        st.success("🔒 Riesgo Bajo: Excelente ratio de capital propio.")
-                    
-                    st.markdown("<div style='text-align: right; margin-top: 10px;'>", unsafe_allow_html=True)
-                    if st.button("🗑️ Eliminar Préstamo", key=f"d_p_del_btn_v3_{idx}"):
-                        du["deudas"].pop(idx)
-                        guardar_automatico()
-                        st.rerun()
-                    st.markdown("</div>", unsafe_allow_html=True)
+                total_intereses = (cuota * meses) - cap if (cuota * meses) > cap else 0.0
+                ltv = (cap / val_activo * 100) if val_activo > 0 else 0.0
+                
+                cuota_formateada = f"{cuota:,.2f} €".replace(",", "X").replace(".", ",").replace("X", ".")
+                intereses_formateados = f"{total_intereses:,.2f} €".replace(",", "X").replace(".", ",").replace("X", ".")
+                
+                st.metric("Cuota Mensual Estimada", cuota_formateada)
+                
+                sub_c1, sub_c2 = st.columns(2)
+                sub_c1.metric("LTV (Deuda / Activo)", f"{ltv:.1f} %")
+                sub_c2.metric("Intereses Pendientes", intereses_formateados)
+                
+                if ltv > 80:
+                    st.error("⚠️ Riesgo Alto: Financiación por encima del 80% del activo.")
+                elif ltv > 60:
+                    st.warning("⚡ Riesgo Moderado: Nivel de apalancamiento intermedio.")
+                elif ltv > 0:
+                    st.success("🔒 Riesgo Bajo: Excelente ratio de capital propio.")
+                
+                st.markdown("<div style='text-align: right; margin-top: 10px;'>", unsafe_allow_html=True)
+                if st.button("🗑️ Eliminar Préstamo", key=f"d_p_del_btn_def_{idx}"):
+                    du["deudas"].pop(idx)
+                    guardar_automatico()
+                    st.rerun()
+                st.markdown("</div>", unsafe_allow_html=True)
 
 # ----- PESTAÑA 5: HORIZONTE INDEPENDENCIA -----
 with tab_libertad:

@@ -520,6 +520,41 @@ def generar_pdf_premium_bytes():
     
     return bytes(pdf.output())
 
+# ==========================================
+# ⚙️ CONFIGURACIÓN LATERAL (SIDEBAR)
+# ==========================================
+with st.sidebar:
+    st.header("⚙️ Configuración del Sistema")
+    st.caption("Ajustes generales y conexiones de tu terminal.")
+    
+    st.divider()
+
+    # --- Configuración de la API de Gemini ---
+    st.subheader("🤖 Conexión Inteligencia Artificial")
+    api_key_input = st.text_input(
+        "Introduce tu API Key de Google Gemini:", 
+        type="password", 
+        help="Necesaria para que funcione el Consultor IA en la Pestaña 6."
+    )
+    
+    # Guardamos la clave en el session_state para que la Pestaña 6 pueda leerla
+    if api_key_input:
+        st.session_state["gemini_api_key"] = api_key_input
+        st.success("✅ API Key conectada correctamente.")
+    else:
+        st.warning("⚠️ Introduce tu API Key para activar el chat IA.")
+        
+    st.divider()
+
+    # --- Opciones extra del sistema ---
+    st.subheader("🛠️ Mantenimiento")
+    if st.button("💾 Forzar Guardado", use_container_width=True):
+        guardar_automatico()
+        st.success("Datos guardados.")
+        
+    if st.button("🗑️ Resetear todos los datos", type="primary", use_container_width=True):
+        st.session_state.clear()
+        st.rerun()
 
 # ==========================================
 # 📊 CREACIÓN Y DEFINICIÓN DE PESTAÑAS

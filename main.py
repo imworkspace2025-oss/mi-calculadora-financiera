@@ -778,7 +778,7 @@ with tab_inversion:
 # # ==============================================================================
 # ----- PESTAÑA 4: CONSULTOR HIPOTECARIO (MÓDULO PREMIUM BANCA PRIVADA) -----
 # ==============================================================================
-with tab_hipoteca:
+with tab_hipotecario:
     st.subheader("🏦 Consultor Hipotecario y Optimización de Deuda", anchor=False)
     st.caption("Control analítico de apalancamiento, costes de financiación y ratios LTV (Loan-to-Value) en tiempo real.")
     

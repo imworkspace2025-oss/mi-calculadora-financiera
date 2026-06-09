@@ -556,12 +556,13 @@ with st.sidebar:
         st.session_state.clear()
         st.rerun()
 
-# ==========================================
-# 📊 CREACIÓN Y DEFINICIÓN DE PESTAÑAS
-# ==========================================
-tab_resumen, tab_presupuesto, tab_inversion, tab_hipoteca, tab_libertad, tab_ia = st.tabs([
-    "👑 Cuadro de Mandos", "🥗 Presupuesto y Deudas", "📈 Rentabilidad e Inversión", 
-    "🏠 Consultor Hipotecario", "🕊️ Horizonte Independencia", "🤖 Dictamen e IA Chat"
+tab_resumen, tab_presupuesto, tab_inversion, tab_hipotecario, tab_independencia, tab_ia = st.tabs([
+    "👑 Cuadro de Mandos", 
+    "🥗 Presupuesto y Deudas", 
+    "📈 Rentabilidad e Inversión", 
+    "🏠 Consultor Hipotecario", 
+    "🔮 Horizonte Independencia", 
+    "💬 Dictamen e IA Chat"
 ])
 
 # ----- PESTAÑA 1: CUADRO DE MANDOS -----

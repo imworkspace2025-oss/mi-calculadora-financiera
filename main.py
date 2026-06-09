@@ -849,7 +849,7 @@ with tab_hipotecario:
                 st.markdown("</div>", unsafe_allow_html=True)
 
 # ----- PESTAÑA 5: HORIZONTE INDEPENDENCIA -----
-with tab_libertad:
+with tab_independencia:
     st.subheader("🕊️ Horizonte de Independencia y Retiro", anchor=False)
     
     with st.container(border=True):

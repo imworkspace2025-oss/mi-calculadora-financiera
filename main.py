@@ -564,7 +564,7 @@ with st.sidebar:
         st.rerun()
 
 # ==========================================
-# 🗂️ CREACIÓN Y DEFINICIÓN DE PESTAÑAS (FUERA DEL SIDEBAR)
+# 🗂️ CREACIÓN DE PESTAÑAS (¡COMPLETAMENTE ALINEADO A LA IZQUIERDA!)
 # ==========================================
 tab_resumen, tab_presupuesto, tab_inversion, tab_hipoteca, tab_independencia, tab_ia = st.tabs([
     "👑 Cuadro de Mandos",

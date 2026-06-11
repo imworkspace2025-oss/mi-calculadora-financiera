@@ -887,7 +887,7 @@ with tab_ia:
             with st.spinner("Analizando matrices de flujos, pasivos y plusvalías..."):
                 try:
                     genai.configure(api_key=st.session_state.api_key_guardada)
-                    model = genai.GenerativeModel("gemini-1.5-flash")
+                    model = genai.GenerativeModel("gemini-2.0-flash")
                     
                     prompt_auditoria = f"""
                     Actúa como un experto auditor de Banca Privada. Analiza la siguiente situación financiera y redacta un dictamen profesional estructurado en 4 bloques: 1. Diagnóstico de Salud Financiera, 2. Análisis del Nivel de Endeudamiento, 3. Optimización Fiscal y Eficiencia, 4. Plan de Acción Recomendado.

@@ -555,7 +555,7 @@ st.divider()
 
     # --- Opciones extra del sistema ---
 st.subheader("🛠️ Mantenimiento")
-    if st.button("💾 Forzar Guardado", use_container_width=True):
+if st.button("💾 Forzar Guardado", use_container_width=True):
         guardar_automatico()
         st.success("Datos guardados.")
         

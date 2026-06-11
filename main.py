@@ -530,21 +530,28 @@ with st.sidebar:
     st.divider()
 
     # --- Configuración de la API de Gemini ---
-    st.subheader("🤖 Conexión Inteligencia Artificial")
-    api_key_input = st.text_input(
-        "Introduce tu API Key de Google Gemini:", 
-        type="password", 
-        help="Necesaria para que funcione el Consultor IA en la Pestaña 6."
-    )
-    
-    # Guardamos la clave en el session_state para que la Pestaña 6 pueda leerla
+st.markdown("### 👁️ Conexión Inteligencia Artificial")
+
+# 1. Si la clave está guardada de forma segura en Secrets, la activa sola
+if "GEMINI_API_KEY" in st.secrets:
+    st.session_state["gemini_api_key"] = st.secrets["GEMINI_API_KEY"]
+    st.success("🔒 Conexión segura y permanente activada.")
+
+# 2. Si no estuviera en Secrets, muestra el plan B manual de antes
+elif "gemini_api_key" not in st.session_state or not st.session_state["gemini_api_key"]:
+    api_key_input = st.text_input("Introduce tu API Key de Google Gemini:", type="password")
     if api_key_input:
         st.session_state["gemini_api_key"] = api_key_input
-        st.success("✅ API Key conectada correctamente.")
+        st.rerun()
     else:
         st.warning("⚠️ Introduce tu API Key para activar el chat IA.")
-        
-    st.divider()
+else:
+    st.success("✅ API Key conectada manualmente.")
+    if st.button("🔄 Cambiar API Key"):
+        st.session_state["gemini_api_key"] = ""
+        st.rerun()
+
+st.divider()
 
     # --- Opciones extra del sistema ---
     st.subheader("🛠️ Mantenimiento")

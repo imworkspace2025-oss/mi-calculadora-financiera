@@ -528,34 +528,34 @@ with st.sidebar:
     st.caption("Ajustes generales y conexiones de tu terminal.")
     
     st.divider()
-
+    
     # --- Configuración de la API de Gemini ---
-st.markdown("### 👁️ Conexión Inteligencia Artificial")
-
-# 1. Si la clave está guardada de forma segura en Secrets, la activa sola
-if "GEMINI_API_KEY" in st.secrets:
-    st.session_state["gemini_api_key"] = st.secrets["GEMINI_API_KEY"]
-    st.success("🔒 Conexión segura y permanente activada.")
-
-# 2. Si no estuviera en Secrets, muestra el plan B manual de antes
-elif "gemini_api_key" not in st.session_state or not st.session_state["gemini_api_key"]:
-    api_key_input = st.text_input("Introduce tu API Key de Google Gemini:", type="password")
-    if api_key_input:
-        st.session_state["gemini_api_key"] = api_key_input
-        st.rerun()
+    st.markdown("### 🤖 Conexión Inteligencia Artificial")
+    
+    # 1. Si la clave está guardada de forma segura en Secrets, la activa sola
+    if "GEMINI_API_KEY" in st.secrets:
+        st.session_state["gemini_api_key"] = st.secrets["GEMINI_API_KEY"]
+        st.success("🤖 Conexión segura y permanente activada.")
+        
+    # 2. Si no estuviera en Secrets, muestra el plan B manual
+    elif "gemini_api_key" not in st.session_state or not st.session_state["gemini_api_key"]:
+        api_key_input = st.text_input("Introduce tu API Key de Google Gemini:", type="password")
+        if api_key_input:
+            st.session_state["gemini_api_key"] = api_key_input
+            st.rerun()
+        else:
+            st.warning("⚠️ Introduce tu API Key para activar el chat IA.")
     else:
-        st.warning("⚠️ Introduce tu API Key para activar el chat IA.")
-else:
-    st.success("✅ API Key conectada manualmente.")
-    if st.button("🔄 Cambiar API Key"):
-        st.session_state["gemini_api_key"] = ""
-        st.rerun()
-
-st.divider()
-
+        st.success("✅ API Key conectada manualmente.")
+        if st.button("🔄 Cambiar API Key"):
+            st.session_state["gemini_api_key"] = ""
+            st.rerun()
+            
+    st.divider()
+    
     # --- Opciones extra del sistema ---
-st.subheader("🛠️ Mantenimiento")
-if st.button("💾 Forzar Guardado", use_container_width=True):
+    st.subheader("🛠️ Mantenimiento")
+    if st.button("💾 Forzar Guardado", use_container_width=True):
         guardar_automatico()
         st.success("Datos guardados.")
         
@@ -563,12 +563,15 @@ if st.button("💾 Forzar Guardado", use_container_width=True):
         st.session_state.clear()
         st.rerun()
 
-tab_resumen, tab_presupuesto, tab_inversion, tab_hipotecario, tab_independencia, tab_ia = st.tabs([
-    "👑 Cuadro de Mandos", 
-    "🥗 Presupuesto y Deudas", 
-    "📈 Rentabilidad e Inversión", 
-    "🏠 Consultor Hipotecario", 
-    "🔮 Horizonte Independencia", 
+# ==========================================
+# 🗂️ CREACIÓN Y DEFINICIÓN DE PESTAÑAS (FUERA DEL SIDEBAR)
+# ==========================================
+tab_resumen, tab_presupuesto, tab_inversion, tab_hipoteca, tab_independencia, tab_ia = st.tabs([
+    "👑 Cuadro de Mandos",
+    "🥗 Presupuesto y Deudas",
+    "📈 Rentabilidad e Inversión",
+    "🏠 Consultor Hipotecario",
+    "🔮 Horizonte Independencia",
     "💬 Dictamen e IA Chat"
 ])
 

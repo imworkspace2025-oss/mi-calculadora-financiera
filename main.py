@@ -785,12 +785,12 @@ with tab_inversion:
                     guardar_automatico()
                     st.rerun()
                 st.markdown("</div>", unsafe_allow_html=True)
-# # ==============================================================================
-# ----- PESTAÑA 4: CONSULTOR HIPOTECARIO (MÓDULO PREMIUM BANCA PRIVADA) -----
-# ==============================================================================
-with tab_hipotecario:
-    st.subheader("🏦 Consultor Hipotecario y Optimización de Deuda", anchor=False)
-    st.caption("Control analítico de apalancamiento, costes de financiación y ratios LTV (Loan-to-Value) en tiempo real.")
+# ==========================================================
+# 🏠 PESTAÑA 4: CONSULTOR HIPOTECARIO (MÓDULO PREMIUM)
+# ==========================================================
+with tab_hipoteca:
+    st.subheader("🏠 Consultor Hipotecario y Optimización de Deuda", anchor=False)
+    st.caption("Control analítico de apalancamiento, costes de financiación y ratios LTV en tiempo real.")
     
     if "deudas" not in du:
         du["deudas"] = []

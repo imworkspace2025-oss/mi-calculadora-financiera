@@ -883,7 +883,15 @@ with tab_ia:
     st.header("🔮 Historial de Dictámenes e IA Interactiva")
     st.caption("Cada vez que ejecutes una auditoría, se guardará un desplegable independiente con su propio chat.")
 
-    # 1. Inicializamos la lista del historial si no existe
+    # 🔑 CONFIGURACIÓN DE LA IA (Esto evita el error 'model is not defined')
+    if st.session_state.api_key_guardada:
+        genai.configure(api_key=st.session_state.api_key_guardada)
+        model = genai.GenerativeModel("gemini-2.5-flash")
+    else:
+        st.error("Falta la clave GEMINI_API_KEY en las variables del sistema (secrets).")
+        st.stop() # Detiene la pestaña aquí si no hay clave
+
+    # 1. Inicializamos la lista del historial si no existe en la memoria
     if "historial_auditorias" not in st.session_state:
         st.session_state["historial_auditorias"] = []
 
@@ -891,18 +899,18 @@ with tab_ia:
     if st.button("🚀 Ejecutar Nueva Auditoría Financiera", type="primary"):
         with st.spinner("Analizando datos actuales con Gemini 2.5..."):
             try:
-                # --- AQUÍ VA TU PROMPT ACTUAL (El bloque de texto largo con tus variables del cuadro) ---
+                # --- AQUÍ VA TU PROMPT ACTUAL (El bloque de texto largo con tus variables de las otras pestañas) ---
                 prompt_inicial = "Genera un dictamen financiero detallado basado en los datos del cuadro..."
                 
-                # Llamada a la IA
+                # Llamada a la IA (Ahora model ya existe)
                 response = model.generate_content(prompt_inicial)
                 texto_dictamen = response.text
                 
-                # Creamos una marca de tiempo elegante para el título
+                # Creamos una marca de tiempo y un ID único
                 ahora = datetime.datetime.now().strftime("%d/%m/%Y - %H:%M")
                 nuevo_id = int(datetime.datetime.now().timestamp())
                 
-                # Estructura de la nueva auditoría para el historial
+                # Estructura de la nueva auditoría
                 nueva_auditoria = {
                     "id": nuevo_id,
                     "titulo": f"📊 Auditoría Patrimonial ({ahora})",
@@ -929,7 +937,7 @@ with tab_ia:
             # Cada auditoría se empaqueta en su propio desplegable
             with st.expander(auditoria["titulo"], expanded=(idx == 0)):
                 
-                # Mostramos el informe original de esa auditoría
+                # Mostramos el informe original
                 st.markdown(auditoria["informe"])
                 
                 st.divider()
@@ -937,12 +945,12 @@ with tab_ia:
                 # --- CHAT EXCLUSIVO DE ESTE DESPLEGABLE ---
                 st.write("💬 **Consultas sobre este Dictamen:**")
                 
-                # Mostramos los mensajes específicos de esta auditoría
+                # Mostramos el histórico de mensajes de este desplegable concreto
                 for msg in auditoria["chat"]:
                     with st.chat_message(msg["role"]):
                         st.markdown(msg["content"])
                 
-                # Caja de texto única para este desplegable (usando formularios para evitar conflictos en bucles)
+                # Formulario exclusivo de chat para este desplegable
                 with st.form(key=f"form_{auditoria['id']}"):
                     pregunta_usuario = st.text_input(
                         "Pregunta algo específico sobre este informe:", 
@@ -952,10 +960,10 @@ with tab_ia:
                     enviar_pregunta = st.form_submit_button("Preguntar a la IA")
                     
                     if enviar_pregunta and pregunta_usuario:
-                        # Añadimos la pregunta del usuario al chat de esta auditoría
+                        # Añadimos la pregunta al chat interno de esta auditoría
                         auditoria["chat"].append({"role": "user", "content": pregunta_usuario})
                         
-                        # Preparamos el contexto para Gemini (Le pasamos este informe específico + la pregunta)
+                        # Preparamos el contexto (Informe + Pregunta)
                         with st.spinner("IA analizando este informe específico..."):
                             try:
                                 contexto_especifico = (
@@ -965,7 +973,7 @@ with tab_ia:
                                 )
                                 response_chat = model.generate_content(contexto_especifico)
                                 
-                                # Guardamos la respuesta en el chat de esta auditoría
+                                # Guardamos la respuesta de la IA en su cajón correspondiente
                                 auditoria["chat"].append({"role": "assistant", "content": response_chat.text})
                                 st.rerun()
                                 

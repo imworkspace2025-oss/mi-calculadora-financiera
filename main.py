@@ -876,40 +876,98 @@ with tab_independencia:
         mime="application/pdf"
     )
 
+import datetime
+
 # ----- PESTAÑA 6: DICTAMEN E IA CHAT -----
 with tab_ia:
-    st.subheader("🤖 Auditoría Financiera Mediante Inteligencia Artificial", anchor=False)
-    
-    if not st.session_state.api_key_guardada:
-        st.error("Falta la clave GEMINI_API_KEY en las variables del sistema (secrets).")
+    st.header("🔮 Historial de Dictámenes e IA Interactiva")
+    st.caption("Cada vez que ejecutes una auditoría, se guardará un desplegable independiente con su propio chat.")
+
+    # 1. Inicializamos la lista del historial si no existe
+    if "historial_auditorias" not in st.session_state:
+        st.session_state["historial_auditorias"] = []
+
+    # 2. Botón para generar una NUEVA auditoría
+    if st.button("🚀 Ejecutar Nueva Auditoría Financiera", type="primary"):
+        with st.spinner("Analizando datos actuales con Gemini 2.5..."):
+            try:
+                # --- AQUÍ VA TU PROMPT ACTUAL (El bloque de texto largo con tus variables del cuadro) ---
+                prompt_inicial = "Genera un dictamen financiero detallado basado en los datos del cuadro..."
+                
+                # Llamada a la IA
+                response = model.generate_content(prompt_inicial)
+                texto_dictamen = response.text
+                
+                # Creamos una marca de tiempo elegante para el título
+                ahora = datetime.datetime.now().strftime("%d/%m/%Y - %H:%M")
+                nuevo_id = int(datetime.datetime.now().timestamp())
+                
+                # Estructura de la nueva auditoría para el historial
+                nueva_auditoria = {
+                    "id": nuevo_id,
+                    "titulo": f"📊 Auditoría Patrimonial ({ahora})",
+                    "informe": texto_dictamen,
+                    "chat": []  # Su propio chat exclusivo
+                }
+                
+                # Lo insertamos al principio de la lista para que la más nueva salga arriba
+                st.session_state["historial_auditorias"].insert(0, nueva_auditoria)
+                st.rerun()
+                
+            except Exception as e:
+                st.error(f"Error al generar el dictamen: {e}")
+
+    # 3. Renderizado del Historial de Desplegables
+    if not st.session_state["historial_auditorias"]:
+        st.info("Aún no has ejecutado ninguna auditoría en esta sesión. Pulsa el botón de arriba para comenzar.")
     else:
-        if st.button("📊 Ejecutar Auditoría Patrimonial Inteligente", type="primary"):
-            with st.spinner("Analizando matrices de flujos, pasivos y plusvalías..."):
-                try:
-                    genai.configure(api_key=st.session_state.api_key_guardada)
-                    model = genai.GenerativeModel("gemini-2.5-flash")
+        st.subheader("📚 Consultas Archivadas")
+        
+        # Recorremos cada auditoría guardada en la memoria
+        for idx, auditoria in enumerate(st.session_state["historial_auditorias"]):
+            
+            # Cada auditoría se empaqueta en su propio desplegable
+            with st.expander(auditoria["titulo"], expanded=(idx == 0)):
+                
+                # Mostramos el informe original de esa auditoría
+                st.markdown(auditoria["informe"])
+                
+                st.divider()
+                
+                # --- CHAT EXCLUSIVO DE ESTE DESPLEGABLE ---
+                st.write("💬 **Consultas sobre este Dictamen:**")
+                
+                # Mostramos los mensajes específicos de esta auditoría
+                for msg in auditoria["chat"]:
+                    with st.chat_message(msg["role"]):
+                        st.markdown(msg["content"])
+                
+                # Caja de texto única para este desplegable (usando formularios para evitar conflictos en bucles)
+                with st.form(key=f"form_{auditoria['id']}"):
+                    pregunta_usuario = st.text_input(
+                        "Pregunta algo específico sobre este informe:", 
+                        key=f"input_{auditoria['id']}",
+                        placeholder="Ej: ¿Qué rentabilidad neta estima este escenario?"
+                    )
+                    enviar_pregunta = st.form_submit_button("Preguntar a la IA")
                     
-                    prompt_auditoria = f"""
-                    Actúa como un experto auditor de Banca Privada. Analiza la siguiente situación financiera y redacta un dictamen profesional estructurado en 4 bloques: 1. Diagnóstico de Salud Financiera, 2. Análisis del Nivel de Endeudamiento, 3. Optimización Fiscal y Eficiencia, 4. Plan de Acción Recomendado.
-                    
-                    DATOS DE BALANCE DEL USUARIO:
-                    - Ingresos Netos al Mes (con extras): {ingresos_totales:.2f} €
-                    - Ahorro Líquido al Mes: {du['ahorro_mensual_total']} €
-                    - Fondo de Maniobra Actual (Efectivo): {du['capital_inicial']} €
-                    - Gastos de Operación Mensuales Totales: {gastos_mensuales_totales:.2f} €
-                    - Capital Pendiente Hipoteca: {du['capital_pendiente']} €
-                    - Otras deudas consolidadas: {total_pendiente_deudas_extra} €
-                    - Patrimonio en Activos/Inversiones: {patrimonio_inversiones_total:.2f} €
-                    - Meta Numérica de Retiro: {num_libertad:.2f} €
-                    - Inflación y Estrés Macroeconómico Aplicado: {du['inflacion_anual']}%
-                    """
-                    
-                    respuesta = model.generate_content(prompt_auditoria)
-                    st.session_state.auditoria_estatica = respuesta.text
-                    st.success("¡Dictamen generado con éxito! Ya se ha integrado también en tu informe PDF.")
-                except Exception as e:
-                    st.error(f"Error en la conexión con la IA: {e}")
-                    
-        if st.session_state.auditoria_estatica:
-            with st.container(border=True):
-                st.markdown(st.session_state.auditoria_estatica)
+                    if enviar_pregunta and pregunta_usuario:
+                        # Añadimos la pregunta del usuario al chat de esta auditoría
+                        auditoria["chat"].append({"role": "user", "content": pregunta_usuario})
+                        
+                        # Preparamos el contexto para Gemini (Le pasamos este informe específico + la pregunta)
+                        with st.spinner("IA analizando este informe específico..."):
+                            try:
+                                contexto_especifico = (
+                                    f"Te están preguntando sobre este informe específico:\n\n"
+                                    f"{auditoria['informe']}\n\n"
+                                    f"Pregunta del usuario: {pregunta_usuario}"
+                                )
+                                response_chat = model.generate_content(contexto_especifico)
+                                
+                                # Guardamos la respuesta en el chat de esta auditoría
+                                auditoria["chat"].append({"role": "assistant", "content": response_chat.text})
+                                st.rerun()
+                                
+                            except Exception as e:
+                                st.error(f"Error en el chat: {e}")
